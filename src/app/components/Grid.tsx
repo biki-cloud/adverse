@@ -39,6 +39,9 @@ export default function Grid({
 }: GridProps) {
   const [cells, setCells] = useState<Map<string, { cell: Cell; ad: Ad | null }>>(new Map());
   const [selectedCell, setSelectedCell] = useState<{ x: number; y: number } | null>(null);
+  const [hoveredCell, setHoveredCell] = useState<{ x: number; y: number; ad: Ad | null } | null>(null);
+  const [hoverPosition, setHoverPosition] = useState<{ x: number; y: number } | null>(null);
+  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
   
   // ピクセル単位のビューポート位置（スムーズな移動のため）
   const [viewportPixel, setViewportPixel] = useState({ x: 0, y: 0 });
@@ -202,15 +205,60 @@ export default function Grid({
 
   // ドラッグ中
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDragging) return;
+    if (isDragging) {
+      const deltaX = e.clientX - dragStart.x;
+      const deltaY = e.clientY - dragStart.y;
 
-    const deltaX = e.clientX - dragStart.x;
-    const deltaY = e.clientY - dragStart.y;
+      setViewportPixel({
+        x: lastViewportPixel.x + deltaX,
+        y: lastViewportPixel.y + deltaY,
+      });
+      return;
+    }
 
-    setViewportPixel({
-      x: lastViewportPixel.x + deltaX,
-      y: lastViewportPixel.y + deltaY,
-    });
+    // ホバー処理
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const { gridX, gridY } = pixelToGrid(mouseX, mouseY);
+
+    if (gridX >= 0 && gridX < gridSize && gridY >= 0 && gridY < gridSize) {
+      const cellKey = `${gridX}_${gridY}`;
+      const cellData = cells.get(cellKey);
+
+      if (cellData?.ad) {
+        setHoveredCell({ x: gridX, y: gridY, ad: cellData.ad });
+        setHoverPosition({ x: e.clientX, y: e.clientY });
+        
+        // ツールチップの位置を計算（画面外に出ないように）
+        const tooltipWidth = 250;
+        const tooltipHeight = 150;
+        const left = e.clientX + 15;
+        const top = e.clientY + 15;
+        
+        setTooltipStyle({
+          left: `${Math.min(left, window.innerWidth - tooltipWidth)}px`,
+          top: `${Math.min(top, window.innerHeight - tooltipHeight)}px`,
+          transform: left + tooltipWidth > window.innerWidth ? 'translateX(-100%)' : 'translateX(0)',
+        });
+      } else {
+        setHoveredCell(null);
+        setHoverPosition(null);
+      }
+    } else {
+      setHoveredCell(null);
+      setHoverPosition(null);
+    }
+  };
+
+  // マウスがキャンバスから離れた時
+  const handleMouseLeave = () => {
+    setHoveredCell(null);
+    setHoverPosition(null);
   };
 
   // ドラッグ終了
@@ -375,6 +423,7 @@ export default function Grid({
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
           onWheel={handleWheel}
           onClick={handleCanvasClick}
           onContextMenu={handleContextMenu}
@@ -385,6 +434,33 @@ export default function Grid({
             touchAction: 'none',
           }}
         />
+        {/* ホバーツールチップ */}
+        {hoveredCell && hoveredCell.ad && hoverPosition && (
+          <div
+            className="fixed z-50 bg-white border-2 border-gray-300 rounded-lg shadow-xl p-3 pointer-events-none max-w-xs"
+            style={tooltipStyle}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <div
+                className="w-4 h-4 rounded border border-gray-300 flex-shrink-0"
+                style={{ backgroundColor: hoveredCell.ad.color }}
+              />
+              <h4 className="font-bold text-sm truncate">{hoveredCell.ad.title}</h4>
+            </div>
+            {hoveredCell.ad.message && (
+              <p className="text-xs text-gray-600 mb-2 line-clamp-2">
+                {hoveredCell.ad.message}
+              </p>
+            )}
+            <div className="flex gap-3 text-xs text-gray-500">
+              <span>👆 {hoveredCell.ad.clickCount}</span>
+              <span>👁 {hoveredCell.ad.viewCount}</span>
+            </div>
+            <p className="text-xs text-gray-400 mt-1 font-mono">
+              ({hoveredCell.x}, {hoveredCell.y})
+            </p>
+          </div>
+        )}
         {isLoading && (
           <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white px-3 py-1 rounded text-sm">
             読み込み中...
