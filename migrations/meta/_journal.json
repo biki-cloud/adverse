@@ -15,6 +15,13 @@
       "when": 1762958759962,
       "tag": "0001_futuristic_wolfsbane",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1762959929862,
+      "tag": "0002_easy_gertrude_yorkes",
+      "breakpoints": true
     }
   ]
 }

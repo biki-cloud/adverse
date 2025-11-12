@@ -21,6 +21,7 @@ export const advertisementsTable = sqliteTable('advertisements', {
   message: text('message'),
   imageUrl: text('imageUrl'),
   targetUrl: text('targetUrl').notNull(),
+  color: text('color').notNull().default('#3b82f6'), // 広告の色（HEX形式）
   clickCount: integer('clickCount').notNull().default(0),
   viewCount: integer('viewCount').notNull().default(0),
   createdAt: integer('createdAt', { mode: 'timestamp' })

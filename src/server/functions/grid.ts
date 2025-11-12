@@ -56,6 +56,7 @@ export async function placeAdOnCell(
     message?: string;
     imageUrl?: string;
     targetUrl: string;
+    color?: string;
   },
 ) {
   const cellId = `${x}_${y}`;
@@ -75,6 +76,7 @@ export async function placeAdOnCell(
     message: adData.message || null,
     imageUrl: adData.imageUrl || null,
     targetUrl: adData.targetUrl,
+    color: adData.color || '#3b82f6', // デフォルトは青
     clickCount: 0,
     viewCount: 0,
   });

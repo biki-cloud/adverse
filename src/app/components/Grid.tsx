@@ -17,6 +17,7 @@ interface Ad {
   message: string | null;
   imageUrl: string | null;
   targetUrl: string;
+  color: string;
   clickCount: number;
   viewCount: number;
 }
@@ -166,8 +167,9 @@ export default function Grid({
         // セルの背景
         if (cellData?.cell.isSpecial) {
           ctx.fillStyle = '#fef3c7'; // 創世エリアは黄色
-        } else if (cellData?.cell.adId) {
-          ctx.fillStyle = '#dbeafe'; // 広告があるセルは青
+        } else if (cellData?.cell.adId && cellData?.ad) {
+          // 広告があるセルは広告の色を使用
+          ctx.fillStyle = cellData.ad.color || '#dbeafe';
         } else {
           ctx.fillStyle = '#f3f4f6'; // 空きセルはグレー
         }
@@ -392,13 +394,22 @@ export default function Grid({
           </h3>
           {selectedCellData?.ad ? (
             <div>
-              <p className="font-semibold">{selectedCellData.ad.title}</p>
+              <div className="flex items-center gap-2 mb-2">
+                <div
+                  className="w-6 h-6 rounded border border-gray-300"
+                  style={{ backgroundColor: selectedCellData.ad.color }}
+                />
+                <p className="font-semibold">{selectedCellData.ad.title}</p>
+              </div>
               {selectedCellData.ad.message && (
                 <p className="text-gray-600 mt-1">{selectedCellData.ad.message}</p>
               )}
               <p className="text-sm text-gray-500 mt-2">
                 クリック数: {selectedCellData.ad.clickCount} | 閲覧数:{' '}
                 {selectedCellData.ad.viewCount}
+              </p>
+              <p className="text-xs text-gray-400 mt-1 font-mono">
+                色: {selectedCellData.ad.color}
               </p>
               <a
                 href={selectedCellData.ad.targetUrl}

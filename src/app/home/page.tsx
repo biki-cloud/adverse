@@ -13,6 +13,7 @@ export default function Home() {
     message: '',
     imageUrl: '',
     targetUrl: '',
+    color: '#3b82f6', // デフォルトは青
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -43,6 +44,7 @@ export default function Home() {
             message: formData.message || undefined,
             imageUrl: formData.imageUrl || undefined,
             targetUrl: formData.targetUrl,
+            color: formData.color,
           },
         }),
       });
@@ -62,6 +64,7 @@ export default function Home() {
           message: '',
           imageUrl: '',
           targetUrl: '',
+          color: '#3b82f6',
         });
         // ページをリロードしてグリッドを更新
         setTimeout(() => {
@@ -219,6 +222,32 @@ export default function Home() {
                   placeholder="https://example.com"
                   required
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  広告の色 *
+                </label>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="color"
+                    value={formData.color}
+                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                    className="w-16 h-10 border border-gray-300 rounded cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={formData.color}
+                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
+                    placeholder="#3b82f6"
+                    pattern="^#[0-9A-Fa-f]{6}$"
+                    required
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  グリッド上でこの色で表示されます
+                </p>
               </div>
 
               <button
