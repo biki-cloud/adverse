@@ -200,12 +200,12 @@ export default function Home() {
         )}
 
         <div className="bg-white rounded-lg shadow-xl p-4">
-          <Grid gridSize={1000} cellSize={15} viewportSize={40} />
+          <Grid gridSize={1000} initialCellSize={20} canvasWidth={1000} canvasHeight={700} />
         </div>
 
         <div className="mt-8 text-center text-gray-600">
           <p className="mb-2">
-            💡 <strong>使い方:</strong> グリッドをクリックして広告を選択、矢印ボタンで移動
+            💡 <strong>使い方:</strong> マウスでドラッグして移動、ホイールでズーム、クリックで広告を選択
           </p>
           <p>
             🎯 最初の10×10マスは「創世エリア」として特別表示されます

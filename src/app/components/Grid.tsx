@@ -23,33 +23,83 @@ interface Ad {
 
 interface GridProps {
   gridSize?: number; // グリッドのサイズ（例: 1000）
-  cellSize?: number; // 1マスのサイズ（ピクセル）
-  viewportSize?: number; // 表示するマスの数（例: 50x50）
+  initialCellSize?: number; // 1マスの初期サイズ（ピクセル）
+  canvasWidth?: number; // キャンバスの幅（ピクセル）
+  canvasHeight?: number; // キャンバスの高さ（ピクセル）
 }
 
 export default function Grid({
   gridSize = 1000,
-  cellSize = 20,
-  viewportSize = 50,
+  initialCellSize = 20,
+  canvasWidth = 800,
+  canvasHeight = 600,
 }: GridProps) {
   const [cells, setCells] = useState<Map<string, { cell: Cell; ad: Ad | null }>>(new Map());
   const [selectedCell, setSelectedCell] = useState<{ x: number; y: number } | null>(null);
-  const [viewport, setViewport] = useState({ x: 0, y: 0 });
+  
+  // ピクセル単位のビューポート位置（スムーズな移動のため）
+  const [viewportPixel, setViewportPixel] = useState({ x: 0, y: 0 });
+  const [cellSize, setCellSize] = useState(initialCellSize);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [lastViewportPixel, setLastViewportPixel] = useState({ x: 0, y: 0 });
+  
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // ピクセル座標をグリッド座標に変換
+  const pixelToGrid = useCallback(
+    (pixelX: number, pixelY: number) => {
+      const gridX = Math.floor((pixelX - viewportPixel.x) / cellSize);
+      const gridY = Math.floor((pixelY - viewportPixel.y) / cellSize);
+      return { gridX, gridY };
+    },
+    [viewportPixel, cellSize],
+  );
+
+  // グリッド座標をピクセル座標に変換
+  const gridToPixel = useCallback(
+    (gridX: number, gridY: number) => {
+      const pixelX = gridX * cellSize + viewportPixel.x;
+      const pixelY = gridY * cellSize + viewportPixel.y;
+      return { pixelX, pixelY };
+    },
+    [viewportPixel, cellSize],
+  );
+
+  // ビューポート内のグリッド範囲を計算
+  const getViewportGridBounds = useCallback(() => {
+    const minX = Math.max(0, Math.floor(-viewportPixel.x / cellSize));
+    const maxX = Math.min(
+      gridSize - 1,
+      Math.ceil((canvasWidth - viewportPixel.x) / cellSize),
+    );
+    const minY = Math.max(0, Math.floor(-viewportPixel.y / cellSize));
+    const maxY = Math.min(
+      gridSize - 1,
+      Math.ceil((canvasHeight - viewportPixel.y) / cellSize),
+    );
+    return { minX, maxX, minY, maxY };
+  }, [viewportPixel, cellSize, canvasWidth, canvasHeight, gridSize]);
 
   // ビューポート内のセルを取得
   const fetchCells = useCallback(async () => {
     setIsLoading(true);
     try {
-      const minX = viewport.x;
-      const maxX = Math.min(viewport.x + viewportSize - 1, gridSize - 1);
-      const minY = viewport.y;
-      const maxY = Math.min(viewport.y + viewportSize - 1, gridSize - 1);
+      const bounds = getViewportGridBounds();
+      const { minX, maxX, minY, maxY } = bounds;
+
+      // バッファを追加してスムーズなスクロールを実現
+      const buffer = 5;
+      const fetchMinX = Math.max(0, minX - buffer);
+      const fetchMaxX = Math.min(gridSize - 1, maxX + buffer);
+      const fetchMinY = Math.max(0, minY - buffer);
+      const fetchMaxY = Math.min(gridSize - 1, maxY + buffer);
 
       // 範囲クエリで取得
       const response = await fetch(
-        `/api/grid?minX=${minX}&maxX=${maxX}&minY=${minY}&maxY=${maxY}`,
+        `/api/grid?minX=${fetchMinX}&maxX=${fetchMaxX}&minY=${fetchMinY}&maxY=${fetchMaxY}`,
       );
       const data = await response.json();
 
@@ -71,7 +121,7 @@ export default function Grid({
     } finally {
       setIsLoading(false);
     }
-  }, [viewport, viewportSize, gridSize]);
+  }, [getViewportGridBounds, gridSize]);
 
   useEffect(() => {
     fetchCells();
@@ -88,16 +138,28 @@ export default function Grid({
     // キャンバスをクリア
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // グリッドを描画
-    for (let x = 0; x < viewportSize; x++) {
-      for (let y = 0; y < viewportSize; y++) {
-        const gridX = viewport.x + x;
-        const gridY = viewport.y + y;
+    const bounds = getViewportGridBounds();
+    const { minX, maxX, minY, maxY } = bounds;
+
+    // ビューポート内のセルを描画
+    for (let gridX = minX; gridX <= maxX; gridX++) {
+      for (let gridY = minY; gridY <= maxY; gridY++) {
         const cellKey = `${gridX}_${gridY}`;
         const cellData = cells.get(cellKey);
 
-        const pixelX = x * cellSize;
-        const pixelY = y * cellSize;
+        // ピクセル座標を計算
+        const pixelX = gridX * cellSize + viewportPixel.x;
+        const pixelY = gridY * cellSize + viewportPixel.y;
+
+        // 画面外のセルはスキップ
+        if (
+          pixelX + cellSize < 0 ||
+          pixelX > canvasWidth ||
+          pixelY + cellSize < 0 ||
+          pixelY > canvasHeight
+        ) {
+          continue;
+        }
 
         // セルの背景
         if (cellData?.cell.isSpecial) {
@@ -123,19 +185,105 @@ export default function Grid({
         ctx.strokeRect(pixelX, pixelY, cellSize - 1, cellSize - 1);
       }
     }
-  }, [cells, viewport, selectedCell, cellSize, viewportSize]);
+  }, [cells, viewportPixel, selectedCell, cellSize, canvasWidth, canvasHeight, getViewportGridBounds]);
 
-  // マウスクリック処理
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  // ドラッグ開始
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0) return; // 左クリックのみ
+    setIsDragging(true);
+    setDragStart({ x: e.clientX, y: e.clientY });
+    setLastViewportPixel({ ...viewportPixel });
+    e.preventDefault();
+  };
+
+  // ドラッグ中
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDragging) return;
+
+    const deltaX = e.clientX - dragStart.x;
+    const deltaY = e.clientY - dragStart.y;
+
+    setViewportPixel({
+      x: lastViewportPixel.x + deltaX,
+      y: lastViewportPixel.y + deltaY,
+    });
+  };
+
+  // ドラッグ終了
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // グローバルマウス移動とリリースを監視
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - dragStart.x;
+      const deltaY = e.clientY - dragStart.y;
+
+      setViewportPixel({
+        x: lastViewportPixel.x + deltaX,
+        y: lastViewportPixel.y + deltaY,
+      });
+    };
+
+    const handleGlobalMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener('mousemove', handleGlobalMouseMove);
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleGlobalMouseMove);
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [isDragging, dragStart.x, dragStart.y, lastViewportPixel.x, lastViewportPixel.y]);
+
+  // マウスホイールでズーム
+  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = Math.floor((e.clientX - rect.left) / cellSize);
-    const y = Math.floor((e.clientY - rect.top) / cellSize);
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
 
-    const gridX = viewport.x + x;
-    const gridY = viewport.y + y;
+    // マウス位置のグリッド座標を計算（ズーム前）
+    const gridX = (mouseX - viewportPixel.x) / cellSize;
+    const gridY = (mouseY - viewportPixel.y) / cellSize;
+
+    // ズーム量を計算
+    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+    const newCellSize = Math.max(5, Math.min(100, cellSize * zoomFactor));
+
+    // マウス位置を中心にズーム
+    const newViewportPixelX = mouseX - gridX * newCellSize;
+    const newViewportPixelY = mouseY - gridY * newCellSize;
+
+    setCellSize(newCellSize);
+    setViewportPixel({
+      x: newViewportPixelX,
+      y: newViewportPixelY,
+    });
+  };
+
+  // マウスクリック処理（ドラッグでない場合のみ）
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // ドラッグ中はクリックとして扱わない
+    if (isDragging) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const { gridX, gridY } = pixelToGrid(mouseX, mouseY);
 
     if (gridX >= 0 && gridX < gridSize && gridY >= 0 && gridY < gridSize) {
       setSelectedCell({ x: gridX, y: gridY });
@@ -160,83 +308,58 @@ export default function Grid({
     }
   };
 
-  // スクロール処理（簡易実装）
-  const handleScroll = (direction: 'up' | 'down' | 'left' | 'right') => {
-    setViewport((prev) => {
-      let newX = prev.x;
-      let newY = prev.y;
+  // ビューポートの境界を制限
+  useEffect(() => {
+    const maxX = (gridSize - 1) * cellSize;
+    const maxY = (gridSize - 1) * cellSize;
 
-      switch (direction) {
-        case 'up':
-          newY = Math.max(0, prev.y - 10);
-          break;
-        case 'down':
-          newY = Math.min(gridSize - viewportSize, prev.y + 10);
-          break;
-        case 'left':
-          newX = Math.max(0, prev.x - 10);
-          break;
-        case 'right':
-          newX = Math.min(gridSize - viewportSize, prev.x + 10);
-          break;
-      }
-
-      return { x: newX, y: newY };
-    });
-  };
+    setViewportPixel((prev) => ({
+      x: Math.max(-maxX, Math.min(0, prev.x)),
+      y: Math.max(-maxY, Math.min(0, prev.y)),
+    }));
+  }, [cellSize, gridSize]);
 
   const selectedCellData = selectedCell
     ? cells.get(`${selectedCell.x}_${selectedCell.y}`)
     : null;
 
+  const bounds = getViewportGridBounds();
+  const centerGridX = Math.floor((bounds.minX + bounds.maxX) / 2);
+  const centerGridY = Math.floor((bounds.minY + bounds.maxY) / 2);
+
   return (
     <div className="flex flex-col items-center gap-4 p-4">
       <div className="text-center">
         <h2 className="text-2xl font-bold mb-2">AdVerse - 広告宇宙</h2>
-        <p className="text-gray-600">
-          位置: ({viewport.x}, {viewport.y}) - ({viewport.x + viewportSize},{' '}
-          {viewport.y + viewportSize})
+        <p className="text-gray-600 text-sm">
+          中心位置: ({centerGridX}, {centerGridY}) | ズーム: {cellSize.toFixed(1)}px/マス |{' '}
+          {isDragging ? 'ドラッグ中...' : 'ドラッグで移動、ホイールでズーム'}
         </p>
       </div>
 
-      <div className="flex gap-4">
-        <button
-          onClick={() => handleScroll('left')}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          ←
-        </button>
-        <div className="flex flex-col gap-2">
-          <button
-            onClick={() => handleScroll('up')}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            ↑
-          </button>
-          <canvas
-            ref={canvasRef}
-            width={viewportSize * cellSize}
-            height={viewportSize * cellSize}
-            onClick={handleCanvasClick}
-            className="border-2 border-gray-300 cursor-pointer"
-            style={{ imageRendering: 'pixelated' }}
-          />
-          <button
-            onClick={() => handleScroll('down')}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            ↓
-          </button>
-        </div>
-        <button
-          onClick={() => handleScroll('right')}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          →
-        </button>
+      <div ref={containerRef} className="relative">
+        <canvas
+          ref={canvasRef}
+          width={canvasWidth}
+          height={canvasHeight}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onWheel={handleWheel}
+          onClick={handleCanvasClick}
+          className="border-2 border-gray-300 rounded-lg shadow-lg"
+          style={{
+            cursor: isDragging ? 'grabbing' : 'grab',
+            imageRendering: 'pixelated',
+            touchAction: 'none',
+          }}
+        />
+        {isLoading && (
+          <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white px-3 py-1 rounded text-sm">
+            読み込み中...
+          </div>
+        )}
       </div>
-
-      {isLoading && <p className="text-gray-500">読み込み中...</p>}
 
       {selectedCell && (
         <div className="mt-4 p-4 bg-white border-2 border-gray-300 rounded-lg max-w-md">
