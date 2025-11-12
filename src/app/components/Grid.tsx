@@ -27,7 +27,7 @@ interface GridProps {
   initialCellSize?: number; // 1マスの初期サイズ（ピクセル）
   canvasWidth?: number; // キャンバスの幅（ピクセル）
   canvasHeight?: number; // キャンバスの高さ（ピクセル）
-  onRightClick?: (x: number, y: number) => void; // 右クリック時のコールバック
+  onRightClick?: (x: number, y: number, ad: Ad | null) => void; // 右クリック時のコールバック（広告情報も含む）
 }
 
 export default function Grid({
@@ -289,9 +289,14 @@ export default function Grid({
     const { gridX, gridY } = pixelToGrid(mouseX, mouseY);
 
     if (gridX >= 0 && gridX < gridSize && gridY >= 0 && gridY < gridSize) {
-      // 右クリックコールバックを呼び出す
+      // セルの広告情報を取得
+      const cellKey = `${gridX}_${gridY}`;
+      const cellData = cells.get(cellKey);
+      const ad = cellData?.ad || null;
+
+      // 右クリックコールバックを呼び出す（広告情報も含む）
       if (onRightClick) {
-        onRightClick(gridX, gridY);
+        onRightClick(gridX, gridY, ad);
       }
     }
   };

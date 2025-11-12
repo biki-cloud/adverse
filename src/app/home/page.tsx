@@ -16,14 +16,37 @@ export default function Home() {
     color: '#3b82f6', // デフォルトは青
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingAdId, setEditingAdId] = useState<string | null>(null); // 編集中の広告ID
 
   // 右クリックでフォームを開く
-  const handleGridRightClick = (x: number, y: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      x: x.toString(),
-      y: y.toString(),
-    }));
+  const handleGridRightClick = (x: number, y: number, ad: any) => {
+    if (ad) {
+      // 既存の広告を編集
+      setFormData({
+        x: x.toString(),
+        y: y.toString(),
+        userId: '', // 編集時はユーザーIDは変更しない
+        title: ad.title || '',
+        message: ad.message || '',
+        imageUrl: ad.imageUrl || '',
+        targetUrl: ad.targetUrl || '',
+        color: ad.color || '#3b82f6',
+      });
+      setEditingAdId(ad.adId);
+    } else {
+      // 新規作成
+      setFormData({
+        x: x.toString(),
+        y: y.toString(),
+        userId: '',
+        title: '',
+        message: '',
+        imageUrl: '',
+        targetUrl: '',
+        color: '#3b82f6',
+      });
+      setEditingAdId(null);
+    }
     setShowPlaceForm(true);
   };
 
@@ -32,48 +55,91 @@ export default function Home() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/grid', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          x: parseInt(formData.x),
-          y: parseInt(formData.y),
-          userId: formData.userId || `user_${Date.now()}`,
-          adData: {
-            title: formData.title,
-            message: formData.message || undefined,
-            imageUrl: formData.imageUrl || undefined,
-            targetUrl: formData.targetUrl,
-            color: formData.color,
-          },
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.error) {
-        alert(`エラー: ${result.error}`);
-      } else {
-        alert('広告を配置しました！');
-        setShowPlaceForm(false);
-        setFormData({
-          x: '',
-          y: '',
-          userId: '',
-          title: '',
-          message: '',
-          imageUrl: '',
-          targetUrl: '',
-          color: '#3b82f6',
+      if (editingAdId) {
+        // 既存の広告を更新
+        const response = await fetch('/api/grid/update', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            adId: editingAdId,
+            adData: {
+              title: formData.title,
+              message: formData.message || undefined,
+              imageUrl: formData.imageUrl || undefined,
+              targetUrl: formData.targetUrl,
+              color: formData.color,
+            },
+          }),
         });
-        // ページをリロードしてグリッドを更新
-        setTimeout(() => {
-          window.location.reload();
-        }, 500);
+
+        const result = await response.json();
+
+        if (result.error) {
+          alert(`エラー: ${result.error}`);
+        } else {
+          alert('広告を更新しました！');
+          setShowPlaceForm(false);
+          setEditingAdId(null);
+          setFormData({
+            x: '',
+            y: '',
+            userId: '',
+            title: '',
+            message: '',
+            imageUrl: '',
+            targetUrl: '',
+            color: '#3b82f6',
+          });
+          // ページをリロードしてグリッドを更新
+          setTimeout(() => {
+            window.location.reload();
+          }, 500);
+        }
+      } else {
+        // 新規作成
+        const response = await fetch('/api/grid', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            x: parseInt(formData.x),
+            y: parseInt(formData.y),
+            userId: formData.userId || `user_${Date.now()}`,
+            adData: {
+              title: formData.title,
+              message: formData.message || undefined,
+              imageUrl: formData.imageUrl || undefined,
+              targetUrl: formData.targetUrl,
+              color: formData.color,
+            },
+          }),
+        });
+
+        const result = await response.json();
+
+        if (result.error) {
+          alert(`エラー: ${result.error}`);
+        } else {
+          alert('広告を配置しました！');
+          setShowPlaceForm(false);
+          setFormData({
+            x: '',
+            y: '',
+            userId: '',
+            title: '',
+            message: '',
+            imageUrl: '',
+            targetUrl: '',
+            color: '#3b82f6',
+          });
+          // ページをリロードしてグリッドを更新
+          setTimeout(() => {
+            window.location.reload();
+          }, 500);
+        }
       }
     } catch (error) {
-      console.error('Error placing ad:', error);
-      alert('広告の配置に失敗しました');
+      console.error('Error placing/updating ad:', error);
+      alert(editingAdId ? '広告の更新に失敗しました' : '広告の配置に失敗しました');
     } finally {
       setIsSubmitting(false);
     }
@@ -109,9 +175,14 @@ export default function Home() {
           {showPlaceForm && (
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold">広告を配置</h2>
+                <h2 className="text-2xl font-bold">
+                  {editingAdId ? '広告を編集' : '広告を配置'}
+                </h2>
                 <button
-                  onClick={() => setShowPlaceForm(false)}
+                  onClick={() => {
+                    setShowPlaceForm(false);
+                    setEditingAdId(null);
+                  }}
                   className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
                   type="button"
                 >
@@ -124,7 +195,9 @@ export default function Home() {
                   📍 配置位置: ({formData.x || '?'}, {formData.y || '?'})
                 </p>
                 <p className="text-xs text-blue-600 mt-1">
-                  グリッド上で右クリックした位置に自動設定されます
+                  {editingAdId
+                    ? '編集モード: 位置は変更できません'
+                    : 'グリッド上で右クリックした位置に自動設定されます'}
                 </p>
               </div>
 
@@ -139,8 +212,9 @@ export default function Home() {
                     max="999"
                     value={formData.x}
                     onChange={(e) => setFormData({ ...formData, x: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50"
                     required
+                    readOnly={!!editingAdId}
                   />
                 </div>
                 <div>
@@ -153,8 +227,9 @@ export default function Home() {
                     max="999"
                     value={formData.y}
                     onChange={(e) => setFormData({ ...formData, y: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50"
                     required
+                    readOnly={!!editingAdId}
                   />
                 </div>
               </div>
@@ -255,7 +330,13 @@ export default function Home() {
                 disabled={isSubmitting}
                 className="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? '配置中...' : '広告を配置'}
+                {isSubmitting
+                  ? editingAdId
+                    ? '更新中...'
+                    : '配置中...'
+                  : editingAdId
+                    ? '広告を更新'
+                    : '広告を配置'}
               </button>
               </form>
             </div>

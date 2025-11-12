@@ -105,6 +105,42 @@ export async function placeAdOnCell(
   return { cellId, adId };
 }
 
+// 広告を更新
+export async function updateAd(
+  adId: string,
+  adData: {
+    title: string;
+    message?: string;
+    imageUrl?: string;
+    targetUrl: string;
+    color?: string;
+  },
+) {
+  const existingAd = await db
+    .select()
+    .from(advertisementsTable)
+    .where(eq(advertisementsTable.adId, adId))
+    .limit(1);
+
+  if (!existingAd[0]) {
+    throw new Error('広告が見つかりません');
+  }
+
+  await db
+    .update(advertisementsTable)
+    .set({
+      title: adData.title,
+      message: adData.message || null,
+      imageUrl: adData.imageUrl || null,
+      targetUrl: adData.targetUrl,
+      color: adData.color || '#3b82f6',
+      updatedAt: new Date(),
+    })
+    .where(eq(advertisementsTable.adId, adId));
+
+  return { adId };
+}
+
 // 広告をクリック
 export async function clickAd(adId: string, cellId: string, metadata?: {
   userAgent?: string;
