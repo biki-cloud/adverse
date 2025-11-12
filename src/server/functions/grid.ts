@@ -43,7 +43,7 @@ export async function getCell(x: number, y: number) {
     .where(eq(gridCellsTable.cellId, cellId))
     .limit(1);
 
-  return result[0] || null;
+  return result[0] ?? null;
 }
 
 // セルに広告を配置
@@ -63,7 +63,7 @@ export async function placeAdOnCell(
 
   // 既存のセルをチェック
   const existingCell = await getCell(x, y);
-  if (existingCell && existingCell.adId) {
+  if (existingCell?.adId) {
     throw new Error('このマスは既に使用されています');
   }
 
@@ -73,10 +73,10 @@ export async function placeAdOnCell(
     adId,
     userId,
     title: adData.title,
-    message: adData.message || null,
-    imageUrl: adData.imageUrl || null,
+    message: adData.message ?? null,
+    imageUrl: adData.imageUrl ?? null,
     targetUrl: adData.targetUrl,
-    color: adData.color || '#3b82f6', // デフォルトは青
+    color: adData.color ?? '#3b82f6', // デフォルトは青
     clickCount: 0,
     viewCount: 0,
   });
@@ -88,7 +88,6 @@ export async function placeAdOnCell(
       .set({
         adId,
         userId,
-        updatedAt: new Date(),
       })
       .where(eq(gridCellsTable.cellId, cellId));
   } else {
@@ -130,10 +129,10 @@ export async function updateAd(
     .update(advertisementsTable)
     .set({
       title: adData.title,
-      message: adData.message || null,
-      imageUrl: adData.imageUrl || null,
+      message: adData.message ?? null,
+      imageUrl: adData.imageUrl ?? null,
       targetUrl: adData.targetUrl,
-      color: adData.color || '#3b82f6',
+      color: adData.color ?? '#3b82f6',
       updatedAt: new Date(),
     })
     .where(eq(advertisementsTable.adId, adId));
@@ -169,8 +168,8 @@ export async function clickAd(adId: string, cellId: string, metadata?: {
     clickId,
     adId,
     cellId,
-    userAgent: metadata?.userAgent || null,
-    referrer: metadata?.referrer || null,
+    userAgent: metadata?.userAgent ?? null,
+    referrer: metadata?.referrer ?? null,
     ipAddress: null, // セキュリティのため、必要に応じて実装
   });
 
@@ -204,6 +203,6 @@ export async function getAd(adId: string) {
     .where(eq(advertisementsTable.adId, adId))
     .limit(1);
 
-  return result[0] || null;
+  return result[0] ?? null;
 }
 

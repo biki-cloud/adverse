@@ -1,5 +1,5 @@
-import { getGridCells, getCell, placeAdOnCell, clickAd, incrementAdView, getAd } from '@/server/functions/grid';
-import { NextRequest } from 'next/server';
+import { getGridCells, getCell, placeAdOnCell, getAd } from '@/server/functions/grid';
+import type { NextRequest } from 'next/server';
 
 export const runtime = 'edge';
 
@@ -64,7 +64,21 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { x, y, userId, adData } = body;
+    if (typeof body !== 'object' || body === null) {
+      return Response.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+    const { x, y, userId, adData } = body as {
+      x?: number;
+      y?: number;
+      userId?: string;
+      adData?: {
+        title: string;
+        message?: string;
+        imageUrl?: string;
+        targetUrl: string;
+        color?: string;
+      };
+    };
 
     if (!x || !y || !userId || !adData) {
       return Response.json({ error: 'Missing required fields' }, { status: 400 });
@@ -72,10 +86,11 @@ export async function POST(request: NextRequest) {
 
     const result = await placeAdOnCell(x, y, userId, adData);
     return Response.json({ success: true, ...result });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error placing ad:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to place ad';
     return Response.json(
-      { error: error.message || 'Failed to place ad' },
+      { error: errorMessage },
       { status: 500 },
     );
   }

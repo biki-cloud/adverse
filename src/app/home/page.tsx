@@ -19,18 +19,25 @@ export default function Home() {
   const [editingAdId, setEditingAdId] = useState<string | null>(null); // 編集中の広告ID
 
   // 右クリックでフォームを開く
-  const handleGridRightClick = (x: number, y: number, ad: any) => {
+  const handleGridRightClick = (x: number, y: number, ad: {
+    adId: string;
+    title: string;
+    message: string | null;
+    imageUrl: string | null;
+    targetUrl: string;
+    color: string;
+  } | null) => {
     if (ad) {
       // 既存の広告を編集
       setFormData({
         x: x.toString(),
         y: y.toString(),
         userId: '', // 編集時はユーザーIDは変更しない
-        title: ad.title || '',
-        message: ad.message || '',
-        imageUrl: ad.imageUrl || '',
-        targetUrl: ad.targetUrl || '',
-        color: ad.color || '#3b82f6',
+        title: ad.title ?? '',
+        message: ad.message ?? '',
+        imageUrl: ad.imageUrl ?? '',
+        targetUrl: ad.targetUrl ?? '',
+        color: ad.color ?? '#3b82f6',
       });
       setEditingAdId(ad.adId);
     } else {
@@ -72,7 +79,12 @@ export default function Home() {
           }),
         });
 
-        const result = await response.json();
+        const rawResult = await response.json();
+        if (typeof rawResult !== 'object' || rawResult === null) {
+          alert('エラー: 無効なレスポンス');
+          return;
+        }
+        const result = rawResult as { error?: string };
 
         if (result.error) {
           alert(`エラー: ${result.error}`);
@@ -114,7 +126,12 @@ export default function Home() {
           }),
         });
 
-        const result = await response.json();
+        const rawResult = await response.json();
+        if (typeof rawResult !== 'object' || rawResult === null) {
+          alert('エラー: 無効なレスポンス');
+          return;
+        }
+        const result = rawResult as { error?: string };
 
         if (result.error) {
           alert(`エラー: ${result.error}`);

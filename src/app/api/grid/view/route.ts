@@ -1,5 +1,5 @@
 import { incrementAdView } from '@/server/functions/grid';
-import { NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 export const runtime = 'edge';
 
@@ -7,7 +7,10 @@ export const runtime = 'edge';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { adId } = body;
+    if (typeof body !== 'object' || body === null) {
+      return Response.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+    const { adId } = body as { adId?: string };
 
     if (!adId) {
       return Response.json({ error: 'Missing adId' }, { status: 400 });
@@ -15,10 +18,11 @@ export async function POST(request: NextRequest) {
 
     await incrementAdView(adId);
     return Response.json({ success: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error incrementing view:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to increment view';
     return Response.json(
-      { error: error.message || 'Failed to increment view' },
+      { error: errorMessage },
       { status: 500 },
     );
   }

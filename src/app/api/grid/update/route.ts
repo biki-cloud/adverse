@@ -1,5 +1,5 @@
 import { updateAd } from '@/server/functions/grid';
-import { NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 export const runtime = 'edge';
 
@@ -7,7 +7,19 @@ export const runtime = 'edge';
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { adId, adData } = body;
+    if (typeof body !== 'object' || body === null) {
+      return Response.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+    const { adId, adData } = body as {
+      adId?: string;
+      adData?: {
+        title: string;
+        message?: string;
+        imageUrl?: string;
+        targetUrl: string;
+        color?: string;
+      };
+    };
 
     if (!adId || !adData) {
       return Response.json({ error: 'Missing required fields' }, { status: 400 });
@@ -15,10 +27,11 @@ export async function PUT(request: NextRequest) {
 
     const result = await updateAd(adId, adData);
     return Response.json({ success: true, ...result });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error updating ad:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to update ad';
     return Response.json(
-      { error: error.message || 'Failed to update ad' },
+      { error: errorMessage },
       { status: 500 },
     );
   }

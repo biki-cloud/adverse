@@ -64,15 +64,6 @@ export default function Grid({
     [viewportPixel, cellSize],
   );
 
-  // グリッド座標をピクセル座標に変換
-  const gridToPixel = useCallback(
-    (gridX: number, gridY: number) => {
-      const pixelX = gridX * cellSize + viewportPixel.x;
-      const pixelY = gridY * cellSize + viewportPixel.y;
-      return { pixelX, pixelY };
-    },
-    [viewportPixel, cellSize],
-  );
 
   // ビューポート内のグリッド範囲を計算
   const getViewportGridBounds = useCallback(() => {
@@ -107,7 +98,13 @@ export default function Grid({
       const response = await fetch(
         `/api/grid?minX=${fetchMinX}&maxX=${fetchMaxX}&minY=${fetchMinY}&maxY=${fetchMaxY}`,
       );
-      const data = await response.json();
+      const rawData = await response.json();
+      if (typeof rawData !== 'object' || rawData === null) {
+        throw new Error('Invalid response data');
+      }
+      const data = rawData as {
+        cells?: Array<{ cell: Cell; ad: Ad | null } | Cell>;
+      };
 
       const newCells = new Map<string, { cell: Cell; ad: Ad | null }>();
 
@@ -115,8 +112,8 @@ export default function Grid({
       if (data.cells && Array.isArray(data.cells)) {
         for (const item of data.cells) {
           // APIから { cell, ad } の形式で返ってくる
-          const cell = item.cell || item; // 後方互換性のため
-          const ad = item.ad || null;
+          const cell = (item as { cell?: Cell; ad?: Ad | null }).cell ?? (item as Cell);
+          const ad = (item as { cell?: Cell; ad?: Ad | null }).ad ?? null;
           newCells.set(cell.cellId, { cell, ad });
         }
       }
@@ -130,7 +127,7 @@ export default function Grid({
   }, [getViewportGridBounds, gridSize]);
 
   useEffect(() => {
-    fetchCells();
+    void fetchCells();
   }, [fetchCells]);
 
   // キャンバスに描画
@@ -340,7 +337,7 @@ export default function Grid({
       // セルの広告情報を取得
       const cellKey = `${gridX}_${gridY}`;
       const cellData = cells.get(cellKey);
-      const ad = cellData?.ad || null;
+      const ad = cellData?.ad ?? null;
 
       // 右クリックコールバックを呼び出す（広告情報も含む）
       if (onRightClick) {
@@ -371,7 +368,7 @@ export default function Grid({
       const cellData = cells.get(cellKey);
       if (cellData?.ad) {
         // 広告をクリック
-        fetch('/api/grid/click', {
+        void fetch('/api/grid/click', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -435,7 +432,7 @@ export default function Grid({
           }}
         />
         {/* ホバーツールチップ */}
-        {hoveredCell && hoveredCell.ad && hoverPosition && (
+        {hoveredCell?.ad && hoverPosition && (
           <div
             className="fixed z-50 bg-white border-2 border-gray-300 rounded-lg shadow-xl p-3 pointer-events-none max-w-xs"
             style={tooltipStyle}
