@@ -26,6 +26,7 @@ interface GridProps {
   initialCellSize?: number; // 1マスの初期サイズ（ピクセル）
   canvasWidth?: number; // キャンバスの幅（ピクセル）
   canvasHeight?: number; // キャンバスの高さ（ピクセル）
+  onRightClick?: (x: number, y: number) => void; // 右クリック時のコールバック
 }
 
 export default function Grid({
@@ -33,6 +34,7 @@ export default function Grid({
   initialCellSize = 20,
   canvasWidth = 800,
   canvasHeight = 600,
+  onRightClick,
 }: GridProps) {
   const [cells, setCells] = useState<Map<string, { cell: Cell; ad: Ad | null }>>(new Map());
   const [selectedCell, setSelectedCell] = useState<{ x: number; y: number } | null>(null);
@@ -271,6 +273,27 @@ export default function Grid({
     });
   };
 
+  // 右クリック処理
+  const handleContextMenu = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const { gridX, gridY } = pixelToGrid(mouseX, mouseY);
+
+    if (gridX >= 0 && gridX < gridSize && gridY >= 0 && gridY < gridSize) {
+      // 右クリックコールバックを呼び出す
+      if (onRightClick) {
+        onRightClick(gridX, gridY);
+      }
+    }
+  };
+
   // マウスクリック処理（ドラッグでない場合のみ）
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     // ドラッグ中はクリックとして扱わない
@@ -347,6 +370,7 @@ export default function Grid({
           onMouseUp={handleMouseUp}
           onWheel={handleWheel}
           onClick={handleCanvasClick}
+          onContextMenu={handleContextMenu}
           className="border-2 border-gray-300 rounded-lg shadow-lg"
           style={{
             cursor: isDragging ? 'grabbing' : 'grab',

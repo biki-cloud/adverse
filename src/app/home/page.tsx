@@ -16,6 +16,16 @@ export default function Home() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // 右クリックでフォームを開く
+  const handleGridRightClick = (x: number, y: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      x: x.toString(),
+      y: y.toString(),
+    }));
+    setShowPlaceForm(true);
+  };
+
   const handlePlaceAd = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -54,7 +64,9 @@ export default function Home() {
           targetUrl: '',
         });
         // ページをリロードしてグリッドを更新
-        window.location.reload();
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
       }
     } catch (error) {
       console.error('Error placing ad:', error);
@@ -80,22 +92,43 @@ export default function Home() {
         </div>
 
         <div className="flex justify-center mb-6">
-          <button
-            onClick={() => setShowPlaceForm(!showPlaceForm)}
-            className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold shadow-lg"
-          >
-            {showPlaceForm ? 'フォームを閉じる' : '広告を配置する'}
-          </button>
+          <p className="text-gray-600">
+            💡 グリッド上で<strong>右クリック</strong>して広告を配置できます
+          </p>
         </div>
 
-        {showPlaceForm && (
-          <div className="max-w-2xl mx-auto mb-8 bg-white p-6 rounded-lg shadow-xl">
-            <h2 className="text-2xl font-bold mb-4">広告を配置</h2>
-            <form onSubmit={handlePlaceAd} className="space-y-4">
+        {/* 右側にスライドインするフォームパネル */}
+        <div
+          className={`fixed top-0 right-0 h-full w-96 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 overflow-y-auto ${
+            showPlaceForm ? 'translate-x-0' : 'translate-x-full'
+          }`}
+        >
+          {showPlaceForm && (
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold">広告を配置</h2>
+                <button
+                  onClick={() => setShowPlaceForm(false)}
+                  className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+                  type="button"
+                >
+                  ×
+                </button>
+              </div>
+              <form onSubmit={handlePlaceAd} className="space-y-4">
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  📍 配置位置: ({formData.x || '?'}, {formData.y || '?'})
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  グリッド上で右クリックした位置に自動設定されます
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    X座標 (0-999)
+                    X座標
                   </label>
                   <input
                     type="number"
@@ -109,7 +142,7 @@ export default function Home() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Y座標 (0-999)
+                    Y座標
                   </label>
                   <input
                     type="number"
@@ -195,17 +228,32 @@ export default function Home() {
               >
                 {isSubmitting ? '配置中...' : '広告を配置'}
               </button>
-            </form>
-          </div>
+              </form>
+            </div>
+          )}
+        </div>
+
+        {/* フォームが開いている時のオーバーレイ */}
+        {showPlaceForm && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-30 z-40"
+            onClick={() => setShowPlaceForm(false)}
+          />
         )}
 
         <div className="bg-white rounded-lg shadow-xl p-4">
-          <Grid gridSize={1000} initialCellSize={20} canvasWidth={1000} canvasHeight={700} />
+          <Grid
+            gridSize={1000}
+            initialCellSize={20}
+            canvasWidth={1000}
+            canvasHeight={700}
+            onRightClick={handleGridRightClick}
+          />
         </div>
 
         <div className="mt-8 text-center text-gray-600">
           <p className="mb-2">
-            💡 <strong>使い方:</strong> マウスでドラッグして移動、ホイールでズーム、クリックで広告を選択
+            💡 <strong>使い方:</strong> マウスでドラッグして移動、ホイールでズーム、左クリックで広告を選択、<strong>右クリックで広告を配置</strong>
           </p>
           <p>
             🎯 最初の10×10マスは「創世エリア」として特別表示されます
