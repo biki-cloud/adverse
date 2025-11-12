@@ -165,9 +165,7 @@ export default function Grid({
         }
 
         // セルの背景
-        if (cellData?.cell.isSpecial) {
-          ctx.fillStyle = '#fef3c7'; // 創世エリアは黄色
-        } else if (cellData?.cell.adId && cellData?.ad) {
+        if (cellData?.cell.adId && cellData?.ad) {
           // 広告があるセルは広告の色を使用
           ctx.fillStyle = cellData.ad.color || '#dbeafe';
         } else {

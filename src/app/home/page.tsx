@@ -382,9 +382,6 @@ export default function Home() {
           <p className="mb-2">
             💡 <strong>使い方:</strong> マウスでドラッグして移動、ホイールでズーム、左クリックで広告を選択、<strong>右クリックで広告を配置</strong>
           </p>
-          <p>
-            🎯 最初の10×10マスは「創世エリア」として特別表示されます
-          </p>
         </div>
       </div>
     </div>

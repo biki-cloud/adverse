@@ -97,7 +97,7 @@ export async function placeAdOnCell(
       y,
       adId,
       userId,
-      isSpecial: x < 10 && y < 10, // 最初の10x10は創世エリア
+      isSpecial: false,
     });
   }
 
