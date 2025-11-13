@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Grid from '@/app/components/Grid';
 
 // ローカルストレージからuserIdを取得、なければ生成して保存
@@ -57,6 +57,7 @@ export default function Home() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingAdId, setEditingAdId] = useState<string | null>(null); // 編集中の広告ID
+  const [isOtherUserAd, setIsOtherUserAd] = useState(false); // 他人の広告かどうか
 
   // コンポーネントマウント時にuserIdとnameを取得
   useEffect(() => {
@@ -78,10 +79,13 @@ export default function Home() {
       targetUrl: string | null;
       color: string;
     } | null,
-    _adUserId: string | null
+    adUserId: string | null
   ) => {
     if (ad) {
-      // 既存の広告を編集（自分の広告のみ編集可能）
+      // 既存の広告の場合、自分の広告かどうかをチェック
+      const isOtherUser = Boolean(adUserId && userId && adUserId !== userId);
+      setIsOtherUserAd(isOtherUser);
+
       setFormData({
         x: x.toString(),
         y: y.toString(),
@@ -94,6 +98,7 @@ export default function Home() {
       setEditingAdId(ad.adId);
     } else {
       // 新規作成
+      setIsOtherUserAd(false);
       setFormData({
         x: x.toString(),
         y: y.toString(),
@@ -110,6 +115,12 @@ export default function Home() {
 
   const handlePlaceAd = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 他人の広告の場合は送信しない
+    if (isOtherUserAd) {
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -260,13 +271,21 @@ export default function Home() {
           {showPlaceForm && (
             <div className="animate-slide-in-right p-6">
               <div className="mb-6 flex items-center justify-between border-b border-gray-200 pb-4">
-                <h2 className="text-2xl font-bold text-gray-800">
-                  {editingAdId ? '✏️ 広告を編集' : '✨ 広告を配置'}
-                </h2>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-800">
+                    {editingAdId ? '✏️ 広告を編集' : '✨ 広告を配置'}
+                  </h2>
+                  {isOtherUserAd && (
+                    <p className="mt-1 text-sm text-gray-500">
+                      この広告は他のユーザーが作成したものです。閲覧のみ可能です。
+                    </p>
+                  )}
+                </div>
                 <button
                   onClick={() => {
                     setShowPlaceForm(false);
                     setEditingAdId(null);
+                    setIsOtherUserAd(false);
                   }}
                   className="flex h-8 w-8 items-center justify-center rounded-full text-3xl font-light text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
                   type="button"
@@ -336,58 +355,96 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  <label
+                    className={`mb-2 block text-sm font-semibold ${isOtherUserAd ? 'text-gray-400' : 'text-gray-700'}`}
+                  >
                     作成者名 <span className="text-xs font-normal text-gray-400">（空欄可）</span>
                   </label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-2.5 transition-all focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className={`w-full rounded-lg border-2 px-4 py-2.5 transition-all ${
+                      isOtherUserAd
+                        ? 'cursor-not-allowed border-gray-300 bg-gray-100 text-gray-500'
+                        : 'border-gray-200 bg-white focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500'
+                    }`}
                     placeholder="あなたの名前（任意）"
+                    readOnly={isOtherUserAd}
+                    disabled={isOtherUserAd}
                   />
-                  <p className="ml-1 mt-1 text-xs text-gray-500">
-                    広告に表示される作成者名です。入力した内容は次回以降も保存されます。
-                  </p>
+                  {!isOtherUserAd && (
+                    <p className="ml-1 mt-1 text-xs text-gray-500">
+                      広告に表示される作成者名です。入力した内容は次回以降も保存されます。
+                    </p>
+                  )}
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-gray-700">タイトル</label>
+                  <label
+                    className={`mb-2 block text-sm font-semibold ${isOtherUserAd ? 'text-gray-400' : 'text-gray-700'}`}
+                  >
+                    タイトル
+                  </label>
                   <input
                     type="text"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-2.5 transition-all focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className={`w-full rounded-lg border-2 px-4 py-2.5 transition-all ${
+                      isOtherUserAd
+                        ? 'cursor-not-allowed border-gray-300 bg-gray-100 text-gray-500'
+                        : 'border-gray-200 bg-white focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500'
+                    }`}
+                    readOnly={isOtherUserAd}
+                    disabled={isOtherUserAd}
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  <label
+                    className={`mb-2 block text-sm font-semibold ${isOtherUserAd ? 'text-gray-400' : 'text-gray-700'}`}
+                  >
                     メッセージ
                   </label>
                   <textarea
                     value={formData.message}
                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    className="w-full resize-none rounded-lg border-2 border-gray-200 bg-white px-4 py-2.5 transition-all focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className={`w-full resize-none rounded-lg border-2 px-4 py-2.5 transition-all ${
+                      isOtherUserAd
+                        ? 'cursor-not-allowed border-gray-300 bg-gray-100 text-gray-500'
+                        : 'border-gray-200 bg-white focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500'
+                    }`}
                     rows={3}
+                    readOnly={isOtherUserAd}
+                    disabled={isOtherUserAd}
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  <label
+                    className={`mb-2 block text-sm font-semibold ${isOtherUserAd ? 'text-gray-400' : 'text-gray-700'}`}
+                  >
                     リンク先URL
                   </label>
                   <input
                     type="url"
                     value={formData.targetUrl}
                     onChange={(e) => setFormData({ ...formData, targetUrl: e.target.value })}
-                    className="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-2.5 transition-all focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className={`w-full rounded-lg border-2 px-4 py-2.5 transition-all ${
+                      isOtherUserAd
+                        ? 'cursor-not-allowed border-gray-300 bg-gray-100 text-gray-500'
+                        : 'border-gray-200 bg-white focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500'
+                    }`}
                     placeholder="https://example.com"
+                    readOnly={isOtherUserAd}
+                    disabled={isOtherUserAd}
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  <label
+                    className={`mb-2 block text-sm font-semibold ${isOtherUserAd ? 'text-gray-400' : 'text-gray-700'}`}
+                  >
                     広告の色 <span className="text-red-500">*</span>
                   </label>
                   <div className="flex items-center gap-3">
@@ -395,36 +452,55 @@ export default function Home() {
                       type="color"
                       value={formData.color}
                       onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                      className="h-12 w-16 cursor-pointer rounded-lg border-2 border-gray-200 shadow-sm transition-shadow hover:shadow-md"
+                      className={`h-12 w-16 rounded-lg border-2 border-gray-200 shadow-sm transition-shadow ${
+                        isOtherUserAd
+                          ? 'cursor-not-allowed bg-gray-100 opacity-50'
+                          : 'cursor-pointer hover:shadow-md'
+                      }`}
+                      disabled={isOtherUserAd}
                     />
                     <input
                       type="text"
                       value={formData.color}
                       onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                      className="flex-1 rounded-lg border-2 border-gray-200 bg-white px-4 py-2.5 font-mono text-sm transition-all focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className={`flex-1 rounded-lg border-2 px-4 py-2.5 font-mono text-sm transition-all ${
+                        isOtherUserAd
+                          ? 'cursor-not-allowed border-gray-300 bg-gray-100 text-gray-500'
+                          : 'border-gray-200 bg-white focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500'
+                      }`}
                       placeholder="#3b82f6"
                       pattern="^#[0-9A-Fa-f]{6}$"
-                      required
+                      required={!isOtherUserAd}
+                      readOnly={isOtherUserAd}
+                      disabled={isOtherUserAd}
                     />
                   </div>
-                  <p className="ml-1 mt-2 text-xs text-gray-500">
-                    グリッド上でこの色で表示されます
-                  </p>
+                  {!isOtherUserAd && (
+                    <p className="ml-1 mt-2 text-xs text-gray-500">
+                      グリッド上でこの色で表示されます
+                    </p>
+                  )}
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full transform rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3.5 font-semibold text-white shadow-lg transition-all hover:scale-[1.02] hover:from-indigo-700 hover:to-purple-700 hover:shadow-xl active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {isSubmitting
-                    ? editingAdId
-                      ? '⏳ 更新中...'
-                      : '⏳ 配置中...'
-                    : editingAdId
-                      ? '✨ 広告を更新'
-                      : '🚀 広告を配置'}
-                </button>
+                {isOtherUserAd ? (
+                  <div className="rounded-lg border-2 border-gray-300 bg-gray-100 px-6 py-3.5 text-center">
+                    <p className="text-sm font-medium text-gray-600">この広告は編集できません</p>
+                  </div>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full transform rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3.5 font-semibold text-white shadow-lg transition-all hover:scale-[1.02] hover:from-indigo-700 hover:to-purple-700 hover:shadow-xl active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isSubmitting
+                      ? editingAdId
+                        ? '⏳ 更新中...'
+                        : '⏳ 配置中...'
+                      : editingAdId
+                        ? '✨ 広告を更新'
+                        : '🚀 広告を配置'}
+                  </button>
+                )}
               </form>
             </div>
           )}
@@ -439,13 +515,22 @@ export default function Home() {
         )}
 
         <div className="glass animate-slide-up rounded-2xl border border-white/50 p-6 shadow-2xl">
-          <Grid
-            gridSize={1000}
-            initialCellSize={20}
-            canvasWidth={1000}
-            canvasHeight={700}
-            onRightClick={handleGridRightClick}
-          />
+          <Suspense
+            fallback={
+              <div className="flex h-[700px] items-center justify-center text-gray-600">
+                読み込み中...
+              </div>
+            }
+          >
+            <Grid
+              gridSize={1000}
+              initialCellSize={20}
+              canvasWidth={1000}
+              canvasHeight={700}
+              currentUserId={userId}
+              onRightClick={handleGridRightClick}
+            />
+          </Suspense>
         </div>
       </div>
     </div>
