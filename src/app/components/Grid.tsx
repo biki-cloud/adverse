@@ -13,6 +13,7 @@ interface Cell {
 
 interface Ad {
   adId: string;
+  name: string | null;
   title: string | null;
   message: string | null;
   targetUrl: string | null;

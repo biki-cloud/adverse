@@ -4,18 +4,8 @@ import { eq, and, gte, lte } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
 // グリッドセルを取得（範囲指定可能）
-export async function getGridCells(
-  minX?: number,
-  maxX?: number,
-  minY?: number,
-  maxY?: number,
-) {
-  if (
-    minX !== undefined &&
-    maxX !== undefined &&
-    minY !== undefined &&
-    maxY !== undefined
-  ) {
+export async function getGridCells(minX?: number, maxX?: number, minY?: number, maxY?: number) {
+  if (minX !== undefined && maxX !== undefined && minY !== undefined && maxY !== undefined) {
     // 範囲クエリ
     return await db
       .select()
@@ -25,8 +15,8 @@ export async function getGridCells(
           gte(gridCellsTable.x, minX),
           lte(gridCellsTable.x, maxX),
           gte(gridCellsTable.y, minY),
-          lte(gridCellsTable.y, maxY),
-        ),
+          lte(gridCellsTable.y, maxY)
+        )
       );
   }
 
@@ -52,11 +42,12 @@ export async function placeAdOnCell(
   y: number,
   userId: string,
   adData: {
+    name?: string;
     title?: string;
     message?: string;
     targetUrl?: string;
     color?: string;
-  },
+  }
 ) {
   const cellId = `${x}_${y}`;
 
@@ -71,9 +62,10 @@ export async function placeAdOnCell(
   await db.insert(advertisementsTable).values({
     adId,
     userId,
-    title: adData.title ?? null,
-    message: adData.message ?? null,
-    targetUrl: adData.targetUrl ?? null,
+    name: adData.name?.trim() ? adData.name.trim() : null,
+    title: adData.title?.trim() ? adData.title.trim() : null,
+    message: adData.message?.trim() ? adData.message.trim() : null,
+    targetUrl: adData.targetUrl?.trim() ? adData.targetUrl.trim() : null,
     color: adData.color ?? '#3b82f6', // デフォルトは青
     clickCount: 0,
     viewCount: 0,
@@ -105,12 +97,14 @@ export async function placeAdOnCell(
 // 広告を更新
 export async function updateAd(
   adId: string,
+  userId: string,
   adData: {
+    name?: string;
     title?: string;
     message?: string;
     targetUrl?: string;
     color?: string;
-  },
+  }
 ) {
   const existingAd = await db
     .select()
@@ -122,12 +116,18 @@ export async function updateAd(
     throw new Error('広告が見つかりません');
   }
 
+  // 所有者チェック：他のユーザーの広告は編集できない
+  if (existingAd[0].userId !== userId) {
+    throw new Error('この広告を編集する権限がありません');
+  }
+
   await db
     .update(advertisementsTable)
     .set({
-      title: adData.title ?? null,
-      message: adData.message ?? null,
-      targetUrl: adData.targetUrl ?? null,
+      name: adData.name?.trim() ? adData.name.trim() : null,
+      title: adData.title?.trim() ? adData.title.trim() : null,
+      message: adData.message?.trim() ? adData.message.trim() : null,
+      targetUrl: adData.targetUrl?.trim() ? adData.targetUrl.trim() : null,
       color: adData.color ?? '#3b82f6',
       updatedAt: new Date(),
     })
@@ -137,10 +137,14 @@ export async function updateAd(
 }
 
 // 広告をクリック
-export async function clickAd(adId: string, cellId: string, metadata?: {
-  userAgent?: string;
-  referrer?: string;
-}) {
+export async function clickAd(
+  adId: string,
+  cellId: string,
+  metadata?: {
+    userAgent?: string;
+    referrer?: string;
+  }
+) {
   // クリック数を増やす
   const ad = await db
     .select()
@@ -201,4 +205,3 @@ export async function getAd(adId: string) {
 
   return result[0] ?? null;
 }
-

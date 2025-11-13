@@ -10,9 +10,11 @@ export async function PUT(request: NextRequest) {
     if (typeof body !== 'object' || body === null) {
       return Response.json({ error: 'Invalid request body' }, { status: 400 });
     }
-    const { adId, adData } = body as {
+    const { adId, userId, adData } = body as {
       adId?: string;
+      userId?: string;
       adData?: {
+        name?: string;
         title?: string;
         message?: string;
         targetUrl?: string;
@@ -20,19 +22,17 @@ export async function PUT(request: NextRequest) {
       };
     };
 
-    if (!adId || !adData) {
+    if (!adId || !userId || !adData) {
       return Response.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const result = await updateAd(adId, adData);
+    const result = await updateAd(adId, userId, adData);
     return Response.json({ success: true, ...result });
   } catch (error) {
     console.error('Error updating ad:', error);
     const errorMessage = error instanceof Error ? error.message : 'Failed to update ad';
-    return Response.json(
-      { error: errorMessage },
-      { status: 500 },
-    );
+    // 権限エラーの場合は403を返す
+    const status = errorMessage.includes('権限') ? 403 : 500;
+    return Response.json({ error: errorMessage }, { status });
   }
 }
-

@@ -17,6 +17,7 @@ export const usersTable = sqliteTable('users', {
 export const advertisementsTable = sqliteTable('advertisements', {
   adId: text('adId').primaryKey(),
   userId: text('userId').notNull(),
+  name: text('name'), // 作成者名（空許容）
   title: text('title'),
   message: text('message'),
   targetUrl: text('targetUrl'),

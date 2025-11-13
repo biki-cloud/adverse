@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
       y?: number;
       userId?: string;
       adData?: {
+        name?: string;
         title?: string;
         message?: string;
         targetUrl?: string;
