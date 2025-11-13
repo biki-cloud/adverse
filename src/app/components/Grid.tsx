@@ -229,35 +229,35 @@ export default function Grid({
         setHoveredCell({ x: gridX, y: gridY, ad: cellData.ad });
         setHoverPosition({ x: e.clientX, y: e.clientY });
         
-        // ツールチップの位置を計算（画面外に出ないように）
+        // ツールチップの位置を計算（マウスカーソルのすぐ近くに表示）
         const tooltipWidth = 250;
         const tooltipHeight = 150;
-        const offset = 10; // マウスカーソルからの距離（小さくすると近くに表示）
+        // マウスカーソルからの距離（この値を変更すると位置が変わります）
+        const offsetX = 8;
+        const offsetY = 8;
+        
+        // マウスの位置からオフセット分だけ右下に表示
+        let left = e.clientX + offsetX;
+        let top = e.clientY + offsetY;
         
         // 画面右端に近い場合は左側に表示
-        let left = e.clientX + offset;
-        let transformX = '0';
         if (left + tooltipWidth > window.innerWidth) {
-          left = e.clientX - tooltipWidth - offset;
-          transformX = '0';
+          left = e.clientX - tooltipWidth - offsetX;
         }
         
         // 画面下端に近い場合は上側に表示
-        let top = e.clientY + offset;
-        let transformY = '0';
         if (top + tooltipHeight > window.innerHeight) {
-          top = e.clientY - tooltipHeight - offset;
-          transformY = '0';
+          top = e.clientY - tooltipHeight - offsetY;
         }
         
-        // 境界チェック
-        left = Math.max(10, Math.min(left, window.innerWidth - tooltipWidth - 10));
-        top = Math.max(10, Math.min(top, window.innerHeight - tooltipHeight - 10));
+        // 最小マージンを確保（画面外に出ないように）
+        left = Math.max(5, Math.min(left, window.innerWidth - tooltipWidth - 5));
+        top = Math.max(5, Math.min(top, window.innerHeight - tooltipHeight - 5));
         
         setTooltipStyle({
           left: `${left}px`,
           top: `${top}px`,
-          transform: `${transformX} ${transformY}`,
+          position: 'fixed' as const,
         });
       } else {
         setHoveredCell(null);
