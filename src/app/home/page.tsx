@@ -226,7 +226,7 @@ export default function Home() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className={`block text-sm font-semibold mb-2 ${editingAdId ? 'text-gray-400' : 'text-gray-700'}`}>
                     X座標
                   </label>
                   <input
@@ -235,13 +235,17 @@ export default function Home() {
                     max="999"
                     value={formData.x}
                     onChange={(e) => setFormData({ ...formData, x: e.target.value })}
-                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-300 bg-white transition-all"
+                    className={`w-full px-4 py-2.5 border-2 rounded-lg transition-all ${
+                      editingAdId
+                        ? 'border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed'
+                        : 'border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-300'
+                    }`}
                     required
                     readOnly={!!editingAdId}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className={`block text-sm font-semibold mb-2 ${editingAdId ? 'text-gray-400' : 'text-gray-700'}`}>
                     Y座標
                   </label>
                   <input
@@ -250,7 +254,11 @@ export default function Home() {
                     max="999"
                     value={formData.y}
                     onChange={(e) => setFormData({ ...formData, y: e.target.value })}
-                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-300 bg-white transition-all"
+                    className={`w-full px-4 py-2.5 border-2 rounded-lg transition-all ${
+                      editingAdId
+                        ? 'border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed'
+                        : 'border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-300'
+                    }`}
                     required
                     readOnly={!!editingAdId}
                   />
@@ -258,7 +266,7 @@ export default function Home() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className={`block text-sm font-semibold mb-2 ${editingAdId ? 'text-gray-400' : 'text-gray-700'}`}>
                   ユーザーID {editingAdId && <span className="text-gray-400 font-normal text-xs">（既存の広告）</span>}
                   {!editingAdId && <span className="text-gray-400 font-normal text-xs">（空欄可、自動生成されます）</span>}
                 </label>
@@ -266,7 +274,11 @@ export default function Home() {
                   type="text"
                   value={formData.userId}
                   onChange={(e) => setFormData({ ...formData, userId: e.target.value })}
-                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-300 bg-white transition-all"
+                  className={`w-full px-4 py-2.5 border-2 rounded-lg transition-all ${
+                    editingAdId
+                      ? 'border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed'
+                      : 'border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-300'
+                  }`}
                   placeholder="user_123"
                   readOnly={!!editingAdId}
                   disabled={!!editingAdId}
@@ -375,15 +387,6 @@ export default function Home() {
             canvasHeight={700}
             onRightClick={handleGridRightClick}
           />
-        </div>
-
-        <div className="mt-8 text-center">
-          <div className="inline-flex items-center gap-2 px-6 py-3 glass rounded-full shadow-lg">
-            <span className="text-lg">💡</span>
-            <p className="text-sm text-gray-700">
-              <strong className="text-indigo-600">使い方:</strong> マウスでドラッグして移動、ホイールでズーム、左クリックで広告を選択、<strong className="text-purple-600">右クリックで広告を配置</strong>
-            </p>
-          </div>
         </div>
       </div>
     </div>

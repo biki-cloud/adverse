@@ -423,30 +423,78 @@ export default function Grid({
   const centerGridY = Math.floor((bounds.minY + bounds.maxY) / 2);
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col items-center gap-2">
+      {/* 選択セル情報と使い方ヒントを上に配置 */}
+      {selectedCell && (
+        <div className="glass w-full max-w-2xl rounded-lg border border-white/50 px-3 py-2 shadow-md">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-base">📍</span>
+              <span className="text-sm font-medium text-gray-700">
+                セル{' '}
+                <span className="font-mono text-indigo-600">
+                  ({selectedCell.x}, {selectedCell.y})
+                </span>
+              </span>
+              {selectedCellData?.ad ? (
+                <div className="ml-2 flex items-center gap-2">
+                  <div
+                    className="h-4 w-4 rounded border border-white shadow-sm"
+                    style={{ backgroundColor: selectedCellData.ad.color }}
+                  />
+                  {selectedCellData.ad.title && (
+                    <span className="max-w-[200px] truncate text-xs font-semibold text-gray-800">
+                      {selectedCellData.ad.title}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <span className="ml-2 text-xs text-gray-500">このマスは空いています</span>
+              )}
+            </div>
+            <div className="flex items-center gap-3 text-xs text-gray-600">
+              <span>💡</span>
+              <span>ドラッグで移動、ホイールでズーム、左クリックで選択、右クリックで配置</span>
+            </div>
+          </div>
+        </div>
+      )}
+      {!selectedCell && (
+        <div className="glass w-full max-w-2xl rounded-lg border border-white/50 px-3 py-2 shadow-md">
+          <div className="flex items-center justify-center gap-2 text-xs text-gray-600">
+            <span>💡</span>
+            <span>
+              使い方:
+              マウスでドラッグして移動、ホイールでズーム、左クリックで広告を選択、右クリックで広告を配置
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="w-full text-center">
-        <div className="glass mb-3 inline-flex items-center gap-3 rounded-full px-4 py-2 shadow-md">
-          <div className="flex items-center gap-2 text-sm">
+        <div className="glass mb-2 inline-flex items-center gap-2 rounded-full px-3 py-1.5 shadow-md">
+          <div className="flex items-center gap-1.5 text-xs">
             <span className="font-semibold text-indigo-600">📍</span>
             <span className="font-medium text-gray-700">
-              中心位置:{' '}
+              中心:{' '}
               <span className="font-mono text-indigo-600">
                 ({centerGridX}, {centerGridY})
               </span>
             </span>
           </div>
           <span className="text-gray-300">|</span>
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-1.5 text-xs">
             <span className="font-semibold text-purple-600">🔍</span>
             <span className="font-medium text-gray-700">
-              ズーム:{' '}
-              <span className="font-mono text-purple-600">{cellSize.toFixed(1)}px/マス</span>
+              ズーム: <span className="font-mono text-purple-600">{cellSize.toFixed(1)}px</span>
             </span>
           </div>
           {isDragging && (
             <>
               <span className="text-gray-300">|</span>
-              <span className="animate-pulse font-semibold text-pink-600">ドラッグ中...</span>
+              <span className="animate-pulse text-xs font-semibold text-pink-600">
+                ドラッグ中...
+              </span>
             </>
           )}
         </div>
@@ -514,70 +562,6 @@ export default function Grid({
           </div>
         )}
       </div>
-
-      {selectedCell && (
-        <div className="glass animate-slide-up mt-6 max-w-md rounded-xl border border-white/50 p-5 shadow-xl">
-          <div className="mb-4 flex items-center gap-2 border-b border-gray-200 pb-3">
-            <span className="text-xl">📍</span>
-            <h3 className="text-lg font-bold text-gray-800">
-              セル{' '}
-              <span className="font-mono text-indigo-600">
-                ({selectedCell.x}, {selectedCell.y})
-              </span>
-            </h3>
-          </div>
-          {selectedCellData?.ad ? (
-            <div className="space-y-3">
-              <div className="mb-3 flex items-center gap-3">
-                <div
-                  className="h-8 w-8 rounded-lg border-2 border-white shadow-md"
-                  style={{ backgroundColor: selectedCellData.ad.color }}
-                />
-                {selectedCellData.ad.title && (
-                  <p className="text-lg font-bold text-gray-800">{selectedCellData.ad.title}</p>
-                )}
-              </div>
-              {selectedCellData.ad.message && (
-                <p className="rounded-lg bg-gray-50 p-3 text-sm leading-relaxed text-gray-600">
-                  {selectedCellData.ad.message}
-                </p>
-              )}
-              <div className="flex gap-4 pt-2 text-sm">
-                <div className="flex items-center gap-2 font-semibold text-indigo-600">
-                  <span>👆</span>
-                  <span>{selectedCellData.ad.clickCount}</span>
-                </div>
-                <div className="flex items-center gap-2 font-semibold text-purple-600">
-                  <span>👁</span>
-                  <span>{selectedCellData.ad.viewCount}</span>
-                </div>
-              </div>
-              <div className="border-t border-gray-200 pt-3">
-                <p className="mb-3 font-mono text-xs text-gray-500">
-                  色: {selectedCellData.ad.color}
-                </p>
-                {selectedCellData.ad.targetUrl && (
-                  <a
-                    href={selectedCellData.ad.targetUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex transform items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:scale-105 hover:from-indigo-700 hover:to-purple-700 hover:shadow-lg"
-                  >
-                    <span>🚀</span>
-                    <span>広告を見る</span>
-                    <span>→</span>
-                  </a>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="py-4 text-center">
-              <p className="mb-2 text-lg text-gray-500">このマスは空いています</p>
-              <p className="text-sm text-gray-400">右クリックで広告を配置できます</p>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
