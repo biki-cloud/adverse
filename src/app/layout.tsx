@@ -16,6 +16,11 @@ const notoSansJP = Noto_Sans_JP({
 export const metadata: Metadata = {
   title: 'AdVerse - 参加型広告プラットフォーム',
   description: '世界中のユーザーが1マスずつ埋めていく、参加型の広告宇宙。1000×1000マスの巨大グリッドで、あなたの広告を配置しよう。',
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({
