@@ -376,15 +376,6 @@ export default function Home() {
             onRightClick={handleGridRightClick}
           />
         </div>
-
-        <div className="mt-8 text-center">
-          <div className="inline-flex items-center gap-2 px-6 py-3 glass rounded-full shadow-lg">
-            <span className="text-lg">💡</span>
-            <p className="text-sm text-gray-700">
-              <strong className="text-indigo-600">使い方:</strong> マウスでドラッグして移動、ホイールでズーム、左クリックで広告を選択、<strong className="text-purple-600">右クリックで広告を配置</strong>
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   );
