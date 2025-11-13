@@ -27,7 +27,7 @@ interface GridProps {
   initialCellSize?: number; // 1マスの初期サイズ（ピクセル）
   canvasWidth?: number; // キャンバスの幅（ピクセル）
   canvasHeight?: number; // キャンバスの高さ（ピクセル）
-  onRightClick?: (x: number, y: number, ad: Ad | null) => void; // 右クリック時のコールバック（広告情報も含む）
+  onRightClick?: (x: number, y: number, ad: Ad | null, userId: string | null) => void; // 右クリック時のコールバック（広告情報とユーザIDも含む）
 }
 
 export default function Grid({
@@ -39,10 +39,12 @@ export default function Grid({
 }: GridProps) {
   const [cells, setCells] = useState<Map<string, { cell: Cell; ad: Ad | null }>>(new Map());
   const [selectedCell, setSelectedCell] = useState<{ x: number; y: number } | null>(null);
-  const [hoveredCell, setHoveredCell] = useState<{ x: number; y: number; ad: Ad | null } | null>(null);
+  const [hoveredCell, setHoveredCell] = useState<{ x: number; y: number; ad: Ad | null } | null>(
+    null
+  );
   const [hoverPosition, setHoverPosition] = useState<{ x: number; y: number } | null>(null);
   const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
-  
+
   // ピクセル単位のビューポート位置（スムーズな移動のため）
   const [viewportPixel, setViewportPixel] = useState({ x: 0, y: 0 });
   const [cellSize, setCellSize] = useState(initialCellSize);
@@ -50,7 +52,7 @@ export default function Grid({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [lastViewportPixel, setLastViewportPixel] = useState({ x: 0, y: 0 });
-  
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -61,22 +63,15 @@ export default function Grid({
       const gridY = Math.floor((pixelY - viewportPixel.y) / cellSize);
       return { gridX, gridY };
     },
-    [viewportPixel, cellSize],
+    [viewportPixel, cellSize]
   );
-
 
   // ビューポート内のグリッド範囲を計算
   const getViewportGridBounds = useCallback(() => {
     const minX = Math.max(0, Math.floor(-viewportPixel.x / cellSize));
-    const maxX = Math.min(
-      gridSize - 1,
-      Math.ceil((canvasWidth - viewportPixel.x) / cellSize),
-    );
+    const maxX = Math.min(gridSize - 1, Math.ceil((canvasWidth - viewportPixel.x) / cellSize));
     const minY = Math.max(0, Math.floor(-viewportPixel.y / cellSize));
-    const maxY = Math.min(
-      gridSize - 1,
-      Math.ceil((canvasHeight - viewportPixel.y) / cellSize),
-    );
+    const maxY = Math.min(gridSize - 1, Math.ceil((canvasHeight - viewportPixel.y) / cellSize));
     return { minX, maxX, minY, maxY };
   }, [viewportPixel, cellSize, canvasWidth, canvasHeight, gridSize]);
 
@@ -96,7 +91,7 @@ export default function Grid({
 
       // 範囲クエリで取得
       const response = await fetch(
-        `/api/grid?minX=${fetchMinX}&maxX=${fetchMaxX}&minY=${fetchMinY}&maxY=${fetchMaxY}`,
+        `/api/grid?minX=${fetchMinX}&maxX=${fetchMaxX}&minY=${fetchMinY}&maxY=${fetchMaxY}`
       );
       const rawData = await response.json();
       if (typeof rawData !== 'object' || rawData === null) {
@@ -187,7 +182,15 @@ export default function Grid({
         ctx.strokeRect(pixelX, pixelY, cellSize - 1, cellSize - 1);
       }
     }
-  }, [cells, viewportPixel, selectedCell, cellSize, canvasWidth, canvasHeight, getViewportGridBounds]);
+  }, [
+    cells,
+    viewportPixel,
+    selectedCell,
+    cellSize,
+    canvasWidth,
+    canvasHeight,
+    getViewportGridBounds,
+  ]);
 
   // ドラッグ開始
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -228,32 +231,32 @@ export default function Grid({
       if (cellData?.ad) {
         setHoveredCell({ x: gridX, y: gridY, ad: cellData.ad });
         setHoverPosition({ x: e.clientX, y: e.clientY });
-        
+
         // ツールチップの位置を計算（マウスカーソルのすぐ近くに表示）
         const tooltipWidth = 250;
         const tooltipHeight = 150;
         // マウスカーソルからの距離（この値を変更すると位置が変わります）
         const offsetX = 8;
         const offsetY = 8;
-        
+
         // マウスの位置からオフセット分だけ右下に表示
         let left = e.clientX + offsetX;
         let top = e.clientY + offsetY;
-        
+
         // 画面右端に近い場合は左側に表示
         if (left + tooltipWidth > window.innerWidth) {
           left = e.clientX - tooltipWidth - offsetX;
         }
-        
+
         // 画面下端に近い場合は上側に表示
         if (top + tooltipHeight > window.innerHeight) {
           top = e.clientY - tooltipHeight - offsetY;
         }
-        
+
         // 最小マージンを確保（画面外に出ないように）
         left = Math.max(5, Math.min(left, window.innerWidth - tooltipWidth - 5));
         top = Math.max(5, Math.min(top, window.innerHeight - tooltipHeight - 5));
-        
+
         setTooltipStyle({
           left: `${left}px`,
           top: `${top}px`,
@@ -351,14 +354,15 @@ export default function Grid({
     const { gridX, gridY } = pixelToGrid(mouseX, mouseY);
 
     if (gridX >= 0 && gridX < gridSize && gridY >= 0 && gridY < gridSize) {
-      // セルの広告情報を取得
+      // セルの広告情報とユーザIDを取得
       const cellKey = `${gridX}_${gridY}`;
       const cellData = cells.get(cellKey);
       const ad = cellData?.ad ?? null;
+      const userId = cellData?.cell.userId ?? null;
 
-      // 右クリックコールバックを呼び出す（広告情報も含む）
+      // 右クリックコールバックを呼び出す（広告情報とユーザIDも含む）
       if (onRightClick) {
-        onRightClick(gridX, gridY, ad);
+        onRightClick(gridX, gridY, ad, userId);
       }
     }
   };
@@ -411,9 +415,7 @@ export default function Grid({
     }));
   }, [cellSize, gridSize]);
 
-  const selectedCellData = selectedCell
-    ? cells.get(`${selectedCell.x}_${selectedCell.y}`)
-    : null;
+  const selectedCellData = selectedCell ? cells.get(`${selectedCell.x}_${selectedCell.y}`) : null;
 
   const bounds = getViewportGridBounds();
   const centerGridX = Math.floor((bounds.minX + bounds.maxX) / 2);
@@ -421,25 +423,29 @@ export default function Grid({
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <div className="text-center w-full">
-        <div className="inline-flex items-center gap-3 px-4 py-2 glass rounded-full shadow-md mb-3">
+      <div className="w-full text-center">
+        <div className="glass mb-3 inline-flex items-center gap-3 rounded-full px-4 py-2 shadow-md">
           <div className="flex items-center gap-2 text-sm">
-            <span className="text-indigo-600 font-semibold">📍</span>
-            <span className="text-gray-700 font-medium">
-              中心位置: <span className="text-indigo-600 font-mono">({centerGridX}, {centerGridY})</span>
+            <span className="font-semibold text-indigo-600">📍</span>
+            <span className="font-medium text-gray-700">
+              中心位置:{' '}
+              <span className="font-mono text-indigo-600">
+                ({centerGridX}, {centerGridY})
+              </span>
             </span>
           </div>
           <span className="text-gray-300">|</span>
           <div className="flex items-center gap-2 text-sm">
-            <span className="text-purple-600 font-semibold">🔍</span>
-            <span className="text-gray-700 font-medium">
-              ズーム: <span className="text-purple-600 font-mono">{cellSize.toFixed(1)}px/マス</span>
+            <span className="font-semibold text-purple-600">🔍</span>
+            <span className="font-medium text-gray-700">
+              ズーム:{' '}
+              <span className="font-mono text-purple-600">{cellSize.toFixed(1)}px/マス</span>
             </span>
           </div>
           {isDragging && (
             <>
               <span className="text-gray-300">|</span>
-              <span className="text-pink-600 font-semibold animate-pulse">ドラッグ中...</span>
+              <span className="animate-pulse font-semibold text-pink-600">ドラッグ中...</span>
             </>
           )}
         </div>
@@ -457,7 +463,7 @@ export default function Grid({
           onWheel={handleWheel}
           onClick={handleCanvasClick}
           onContextMenu={handleContextMenu}
-          className="border-2 border-gray-200 rounded-xl shadow-2xl bg-white"
+          className="rounded-xl border-2 border-gray-200 bg-white shadow-2xl"
           style={{
             cursor: isDragging ? 'grabbing' : 'grab',
             imageRendering: 'pixelated',
@@ -467,86 +473,89 @@ export default function Grid({
         {/* ホバーツールチップ */}
         {hoveredCell?.ad && hoverPosition && (
           <div
-            className="fixed z-50 glass border border-white/50 rounded-xl shadow-2xl p-4 pointer-events-none max-w-xs animate-fade-in"
+            className="glass animate-fade-in pointer-events-none fixed z-50 max-w-xs rounded-xl border border-white/50 p-4 shadow-2xl"
             style={tooltipStyle}
           >
-            <div className="flex items-center gap-3 mb-3">
+            <div className="mb-3 flex items-center gap-3">
               <div
-                className="w-5 h-5 rounded-lg border-2 border-white shadow-md flex-shrink-0"
+                className="h-5 w-5 flex-shrink-0 rounded-lg border-2 border-white shadow-md"
                 style={{ backgroundColor: hoveredCell.ad.color }}
               />
-              <h4 className="font-bold text-sm text-gray-800 truncate">{hoveredCell.ad.title}</h4>
+              <h4 className="truncate text-sm font-bold text-gray-800">{hoveredCell.ad.title}</h4>
             </div>
             {hoveredCell.ad.message && (
-              <p className="text-xs text-gray-600 mb-3 line-clamp-2 leading-relaxed">
+              <p className="mb-3 line-clamp-2 text-xs leading-relaxed text-gray-600">
                 {hoveredCell.ad.message}
               </p>
             )}
-            <div className="flex gap-4 text-xs mb-2">
-              <div className="flex items-center gap-1 text-indigo-600 font-semibold">
+            <div className="mb-2 flex gap-4 text-xs">
+              <div className="flex items-center gap-1 font-semibold text-indigo-600">
                 <span>👆</span>
                 <span>{hoveredCell.ad.clickCount}</span>
               </div>
-              <div className="flex items-center gap-1 text-purple-600 font-semibold">
+              <div className="flex items-center gap-1 font-semibold text-purple-600">
                 <span>👁</span>
                 <span>{hoveredCell.ad.viewCount}</span>
               </div>
             </div>
-            <div className="pt-2 border-t border-gray-200">
-              <p className="text-xs text-gray-500 font-mono">
+            <div className="border-t border-gray-200 pt-2">
+              <p className="font-mono text-xs text-gray-500">
                 ({hoveredCell.x}, {hoveredCell.y})
               </p>
             </div>
           </div>
         )}
         {isLoading && (
-          <div className="absolute top-3 right-3 glass px-4 py-2 rounded-lg text-sm font-medium shadow-lg animate-pulse border border-white/50">
-            <span className="text-gray-700 font-semibold">⏳ 読み込み中...</span>
+          <div className="glass absolute right-3 top-3 animate-pulse rounded-lg border border-white/50 px-4 py-2 text-sm font-medium shadow-lg">
+            <span className="font-semibold text-gray-700">⏳ 読み込み中...</span>
           </div>
         )}
       </div>
 
       {selectedCell && (
-        <div className="mt-6 p-5 glass border border-white/50 rounded-xl shadow-xl max-w-md animate-slide-up">
-          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200">
+        <div className="glass animate-slide-up mt-6 max-w-md rounded-xl border border-white/50 p-5 shadow-xl">
+          <div className="mb-4 flex items-center gap-2 border-b border-gray-200 pb-3">
             <span className="text-xl">📍</span>
-            <h3 className="font-bold text-lg text-gray-800">
-              セル <span className="text-indigo-600 font-mono">({selectedCell.x}, {selectedCell.y})</span>
+            <h3 className="text-lg font-bold text-gray-800">
+              セル{' '}
+              <span className="font-mono text-indigo-600">
+                ({selectedCell.x}, {selectedCell.y})
+              </span>
             </h3>
           </div>
           {selectedCellData?.ad ? (
             <div className="space-y-3">
-              <div className="flex items-center gap-3 mb-3">
+              <div className="mb-3 flex items-center gap-3">
                 <div
-                  className="w-8 h-8 rounded-lg border-2 border-white shadow-md"
+                  className="h-8 w-8 rounded-lg border-2 border-white shadow-md"
                   style={{ backgroundColor: selectedCellData.ad.color }}
                 />
-                <p className="font-bold text-gray-800 text-lg">{selectedCellData.ad.title}</p>
+                <p className="text-lg font-bold text-gray-800">{selectedCellData.ad.title}</p>
               </div>
               {selectedCellData.ad.message && (
-                <p className="text-gray-600 text-sm leading-relaxed bg-gray-50 p-3 rounded-lg">
+                <p className="rounded-lg bg-gray-50 p-3 text-sm leading-relaxed text-gray-600">
                   {selectedCellData.ad.message}
                 </p>
               )}
-              <div className="flex gap-4 text-sm pt-2">
-                <div className="flex items-center gap-2 text-indigo-600 font-semibold">
+              <div className="flex gap-4 pt-2 text-sm">
+                <div className="flex items-center gap-2 font-semibold text-indigo-600">
                   <span>👆</span>
                   <span>{selectedCellData.ad.clickCount}</span>
                 </div>
-                <div className="flex items-center gap-2 text-purple-600 font-semibold">
+                <div className="flex items-center gap-2 font-semibold text-purple-600">
                   <span>👁</span>
                   <span>{selectedCellData.ad.viewCount}</span>
                 </div>
               </div>
-              <div className="pt-3 border-t border-gray-200">
-                <p className="text-xs text-gray-500 font-mono mb-3">
+              <div className="border-t border-gray-200 pt-3">
+                <p className="mb-3 font-mono text-xs text-gray-500">
                   色: {selectedCellData.ad.color}
                 </p>
                 <a
                   href={selectedCellData.ad.targetUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105"
+                  className="inline-flex transform items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:scale-105 hover:from-indigo-700 hover:to-purple-700 hover:shadow-lg"
                 >
                   <span>🚀</span>
                   <span>広告を見る</span>
@@ -555,9 +564,9 @@ export default function Grid({
               </div>
             </div>
           ) : (
-            <div className="text-center py-4">
-              <p className="text-gray-500 text-lg mb-2">このマスは空いています</p>
-              <p className="text-gray-400 text-sm">右クリックで広告を配置できます</p>
+            <div className="py-4 text-center">
+              <p className="mb-2 text-lg text-gray-500">このマスは空いています</p>
+              <p className="text-sm text-gray-400">右クリックで広告を配置できます</p>
             </div>
           )}
         </div>
@@ -565,4 +574,3 @@ export default function Grid({
     </div>
   );
 }
-

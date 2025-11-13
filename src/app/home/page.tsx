@@ -26,13 +26,13 @@ export default function Home() {
     imageUrl: string | null;
     targetUrl: string;
     color: string;
-  } | null) => {
+  } | null, userId: string | null) => {
     if (ad) {
       // 既存の広告を編集
       setFormData({
         x: x.toString(),
         y: y.toString(),
-        userId: '', // 編集時はユーザーIDは変更しない
+        userId: userId ?? '', // 既存の広告のユーザーIDを設定
         title: ad.title ?? '',
         message: ad.message ?? '',
         imageUrl: ad.imageUrl ?? '',
@@ -267,7 +267,8 @@ export default function Home() {
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  ユーザーID <span className="text-gray-400 font-normal text-xs">（空欄可、自動生成されます）</span>
+                  ユーザーID {editingAdId && <span className="text-gray-400 font-normal text-xs">（既存の広告）</span>}
+                  {!editingAdId && <span className="text-gray-400 font-normal text-xs">（空欄可、自動生成されます）</span>}
                 </label>
                 <input
                   type="text"
@@ -275,7 +276,14 @@ export default function Home() {
                   onChange={(e) => setFormData({ ...formData, userId: e.target.value })}
                   className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-300 bg-white transition-all"
                   placeholder="user_123"
+                  readOnly={!!editingAdId}
+                  disabled={!!editingAdId}
                 />
+                {editingAdId && formData.userId && (
+                  <p className="text-xs text-gray-500 mt-1 ml-1">
+                    この広告を配置したユーザーID: <span className="font-mono font-semibold">{formData.userId}</span>
+                  </p>
+                )}
               </div>
 
               <div>
