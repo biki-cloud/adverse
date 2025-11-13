@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Grid from '@/app/components/Grid';
 
 // ローカルストレージからuserIdを取得、なければ生成して保存
@@ -515,14 +515,22 @@ export default function Home() {
         )}
 
         <div className="glass animate-slide-up rounded-2xl border border-white/50 p-6 shadow-2xl">
-          <Grid
-            gridSize={1000}
-            initialCellSize={20}
-            canvasWidth={1000}
-            canvasHeight={700}
-            currentUserId={userId}
-            onRightClick={handleGridRightClick}
-          />
+          <Suspense
+            fallback={
+              <div className="flex h-[700px] items-center justify-center text-gray-600">
+                読み込み中...
+              </div>
+            }
+          >
+            <Grid
+              gridSize={1000}
+              initialCellSize={20}
+              canvasWidth={1000}
+              canvasHeight={700}
+              currentUserId={userId}
+              onRightClick={handleGridRightClick}
+            />
+          </Suspense>
         </div>
       </div>
     </div>

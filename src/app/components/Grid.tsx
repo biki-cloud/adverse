@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 interface Cell {
   cellId: string;
@@ -39,6 +40,8 @@ export default function Grid({
   currentUserId: _currentUserId,
   onRightClick,
 }: GridProps) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [cells, setCells] = useState<Map<string, { cell: Cell; ad: Ad | null }>>(new Map());
   const [selectedCell, setSelectedCell] = useState<{ x: number; y: number } | null>(null);
   const [hoveredCell, setHoveredCell] = useState<{ x: number; y: number; ad: Ad | null } | null>(
@@ -57,6 +60,7 @@ export default function Grid({
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const hasInitializedFromUrl = useRef(false);
 
   // ピクセル座標をグリッド座標に変換
   const pixelToGrid = useCallback(
@@ -126,6 +130,78 @@ export default function Grid({
   useEffect(() => {
     void fetchCells();
   }, [fetchCells]);
+
+  // URLパラメータからセルを読み込む
+  useEffect(() => {
+    const xParam = searchParams.get('x');
+    const yParam = searchParams.get('y');
+
+    if (xParam && yParam) {
+      const x = parseInt(xParam, 10);
+      const y = parseInt(yParam, 10);
+
+      if (!isNaN(x) && !isNaN(y) && x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
+        // 現在選択されているセルと異なる場合のみ更新
+        setSelectedCell((prev) => {
+          if (prev && prev.x === x && prev.y === y) {
+            return prev;
+          }
+          return { x, y };
+        });
+
+        // 初期化時のみビューポートを調整
+        if (!hasInitializedFromUrl.current) {
+          const cellPixelX = x * cellSize;
+          const cellPixelY = y * cellSize;
+
+          // セルが画面の中央に来るようにビューポートを調整
+          const targetViewportX = canvasWidth / 2 - cellPixelX;
+          const targetViewportY = canvasHeight / 2 - cellPixelY;
+
+          // ビューポートの境界を制限
+          const maxX = (gridSize - 1) * cellSize;
+          const maxY = (gridSize - 1) * cellSize;
+
+          setViewportPixel({
+            x: Math.max(-maxX, Math.min(0, targetViewportX)),
+            y: Math.max(-maxY, Math.min(0, targetViewportY)),
+          });
+
+          hasInitializedFromUrl.current = true;
+        }
+      }
+    } else {
+      // URLパラメータがない場合は選択を解除
+      setSelectedCell((prev) => {
+        if (!prev) return null;
+        return null;
+      });
+      if (!hasInitializedFromUrl.current) {
+        hasInitializedFromUrl.current = true;
+      }
+    }
+  }, [searchParams, gridSize, cellSize, canvasWidth, canvasHeight]);
+
+  // セルが選択されたときにURLを更新する
+  const updateSelectedCell = useCallback(
+    (cell: { x: number; y: number } | null) => {
+      setSelectedCell(cell);
+
+      if (cell) {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('x', cell.x.toString());
+        params.set('y', cell.y.toString());
+        router.replace(`?${params.toString()}`, { scroll: false });
+      } else {
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete('x');
+        params.delete('y');
+        const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
+        router.replace(newUrl, { scroll: false });
+      }
+    },
+    [searchParams, router]
+  );
 
   // キャンバスに描画
   useEffect(() => {
@@ -384,7 +460,7 @@ export default function Grid({
     const { gridX, gridY } = pixelToGrid(mouseX, mouseY);
 
     if (gridX >= 0 && gridX < gridSize && gridY >= 0 && gridY < gridSize) {
-      setSelectedCell({ x: gridX, y: gridY });
+      updateSelectedCell({ x: gridX, y: gridY });
 
       // 広告がある場合はクリック処理
       const cellKey = `${gridX}_${gridY}`;
