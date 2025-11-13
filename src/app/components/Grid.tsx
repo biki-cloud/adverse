@@ -13,10 +13,9 @@ interface Cell {
 
 interface Ad {
   adId: string;
-  title: string;
+  title: string | null;
   message: string | null;
-  imageUrl: string | null;
-  targetUrl: string;
+  targetUrl: string | null;
   color: string;
   clickCount: number;
   viewCount: number;
@@ -398,8 +397,10 @@ export default function Grid({
           }),
         });
 
-        // 広告のURLを開く
-        window.open(cellData.ad.targetUrl, '_blank');
+        // 広告のURLを開く（URLがある場合のみ）
+        if (cellData.ad.targetUrl) {
+          window.open(cellData.ad.targetUrl, '_blank');
+        }
       }
     }
   };
@@ -481,7 +482,9 @@ export default function Grid({
                 className="h-5 w-5 flex-shrink-0 rounded-lg border-2 border-white shadow-md"
                 style={{ backgroundColor: hoveredCell.ad.color }}
               />
-              <h4 className="truncate text-sm font-bold text-gray-800">{hoveredCell.ad.title}</h4>
+              {hoveredCell.ad.title && (
+                <h4 className="truncate text-sm font-bold text-gray-800">{hoveredCell.ad.title}</h4>
+              )}
             </div>
             {hoveredCell.ad.message && (
               <p className="mb-3 line-clamp-2 text-xs leading-relaxed text-gray-600">
@@ -530,7 +533,9 @@ export default function Grid({
                   className="h-8 w-8 rounded-lg border-2 border-white shadow-md"
                   style={{ backgroundColor: selectedCellData.ad.color }}
                 />
-                <p className="text-lg font-bold text-gray-800">{selectedCellData.ad.title}</p>
+                {selectedCellData.ad.title && (
+                  <p className="text-lg font-bold text-gray-800">{selectedCellData.ad.title}</p>
+                )}
               </div>
               {selectedCellData.ad.message && (
                 <p className="rounded-lg bg-gray-50 p-3 text-sm leading-relaxed text-gray-600">
@@ -551,16 +556,18 @@ export default function Grid({
                 <p className="mb-3 font-mono text-xs text-gray-500">
                   色: {selectedCellData.ad.color}
                 </p>
-                <a
-                  href={selectedCellData.ad.targetUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex transform items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:scale-105 hover:from-indigo-700 hover:to-purple-700 hover:shadow-lg"
-                >
-                  <span>🚀</span>
-                  <span>広告を見る</span>
-                  <span>→</span>
-                </a>
+                {selectedCellData.ad.targetUrl && (
+                  <a
+                    href={selectedCellData.ad.targetUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex transform items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:scale-105 hover:from-indigo-700 hover:to-purple-700 hover:shadow-lg"
+                  >
+                    <span>🚀</span>
+                    <span>広告を見る</span>
+                    <span>→</span>
+                  </a>
+                )}
               </div>
             </div>
           ) : (
