@@ -27,6 +27,7 @@ interface GridProps {
   initialCellSize?: number; // 1マスの初期サイズ（ピクセル）
   canvasWidth?: number; // キャンバスの幅（ピクセル）
   canvasHeight?: number; // キャンバスの高さ（ピクセル）
+  currentUserId?: string; // 現在のユーザーID（自分の広告を判定するため）
   onRightClick?: (x: number, y: number, ad: Ad | null, userId: string | null) => void; // 右クリック時のコールバック（広告情報とユーザIDも含む）
 }
 
@@ -35,6 +36,7 @@ export default function Grid({
   initialCellSize = 20,
   canvasWidth = 800,
   canvasHeight = 600,
+  currentUserId: _currentUserId,
   onRightClick,
 }: GridProps) {
   const [cells, setCells] = useState<Map<string, { cell: Cell; ad: Ad | null }>>(new Map());
