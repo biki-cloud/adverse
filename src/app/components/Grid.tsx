@@ -232,13 +232,32 @@ export default function Grid({
         // ツールチップの位置を計算（画面外に出ないように）
         const tooltipWidth = 250;
         const tooltipHeight = 150;
-        const left = e.clientX + 15;
-        const top = e.clientY + 15;
+        const offset = 10; // マウスカーソルからの距離（小さくすると近くに表示）
+        
+        // 画面右端に近い場合は左側に表示
+        let left = e.clientX + offset;
+        let transformX = '0';
+        if (left + tooltipWidth > window.innerWidth) {
+          left = e.clientX - tooltipWidth - offset;
+          transformX = '0';
+        }
+        
+        // 画面下端に近い場合は上側に表示
+        let top = e.clientY + offset;
+        let transformY = '0';
+        if (top + tooltipHeight > window.innerHeight) {
+          top = e.clientY - tooltipHeight - offset;
+          transformY = '0';
+        }
+        
+        // 境界チェック
+        left = Math.max(10, Math.min(left, window.innerWidth - tooltipWidth - 10));
+        top = Math.max(10, Math.min(top, window.innerHeight - tooltipHeight - 10));
         
         setTooltipStyle({
-          left: `${Math.min(left, window.innerWidth - tooltipWidth)}px`,
-          top: `${Math.min(top, window.innerHeight - tooltipHeight)}px`,
-          transform: left + tooltipWidth > window.innerWidth ? 'translateX(-100%)' : 'translateX(0)',
+          left: `${left}px`,
+          top: `${top}px`,
+          transform: `${transformX} ${transformY}`,
         });
       } else {
         setHoveredCell(null);
@@ -401,13 +420,29 @@ export default function Grid({
   const centerGridY = Math.floor((bounds.minY + bounds.maxY) / 2);
 
   return (
-    <div className="flex flex-col items-center gap-4 p-4">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold mb-2">AdVerse - 広告宇宙</h2>
-        <p className="text-gray-600 text-sm">
-          中心位置: ({centerGridX}, {centerGridY}) | ズーム: {cellSize.toFixed(1)}px/マス |{' '}
-          {isDragging ? 'ドラッグ中...' : 'ドラッグで移動、ホイールでズーム'}
-        </p>
+    <div className="flex flex-col items-center gap-4">
+      <div className="text-center w-full">
+        <div className="inline-flex items-center gap-3 px-4 py-2 glass rounded-full shadow-md mb-3">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-indigo-600 font-semibold">📍</span>
+            <span className="text-gray-700 font-medium">
+              中心位置: <span className="text-indigo-600 font-mono">({centerGridX}, {centerGridY})</span>
+            </span>
+          </div>
+          <span className="text-gray-300">|</span>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-purple-600 font-semibold">🔍</span>
+            <span className="text-gray-700 font-medium">
+              ズーム: <span className="text-purple-600 font-mono">{cellSize.toFixed(1)}px/マス</span>
+            </span>
+          </div>
+          {isDragging && (
+            <>
+              <span className="text-gray-300">|</span>
+              <span className="text-pink-600 font-semibold animate-pulse">ドラッグ中...</span>
+            </>
+          )}
+        </div>
       </div>
 
       <div ref={containerRef} className="relative">
@@ -422,7 +457,7 @@ export default function Grid({
           onWheel={handleWheel}
           onClick={handleCanvasClick}
           onContextMenu={handleContextMenu}
-          className="border-2 border-gray-300 rounded-lg shadow-lg"
+          className="border-2 border-gray-200 rounded-xl shadow-2xl bg-white"
           style={{
             cursor: isDragging ? 'grabbing' : 'grab',
             imageRendering: 'pixelated',
@@ -432,72 +467,98 @@ export default function Grid({
         {/* ホバーツールチップ */}
         {hoveredCell?.ad && hoverPosition && (
           <div
-            className="fixed z-50 bg-white border-2 border-gray-300 rounded-lg shadow-xl p-3 pointer-events-none max-w-xs"
+            className="fixed z-50 glass border border-white/50 rounded-xl shadow-2xl p-4 pointer-events-none max-w-xs animate-fade-in"
             style={tooltipStyle}
           >
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-3 mb-3">
               <div
-                className="w-4 h-4 rounded border border-gray-300 flex-shrink-0"
+                className="w-5 h-5 rounded-lg border-2 border-white shadow-md flex-shrink-0"
                 style={{ backgroundColor: hoveredCell.ad.color }}
               />
-              <h4 className="font-bold text-sm truncate">{hoveredCell.ad.title}</h4>
+              <h4 className="font-bold text-sm text-gray-800 truncate">{hoveredCell.ad.title}</h4>
             </div>
             {hoveredCell.ad.message && (
-              <p className="text-xs text-gray-600 mb-2 line-clamp-2">
+              <p className="text-xs text-gray-600 mb-3 line-clamp-2 leading-relaxed">
                 {hoveredCell.ad.message}
               </p>
             )}
-            <div className="flex gap-3 text-xs text-gray-500">
-              <span>👆 {hoveredCell.ad.clickCount}</span>
-              <span>👁 {hoveredCell.ad.viewCount}</span>
+            <div className="flex gap-4 text-xs mb-2">
+              <div className="flex items-center gap-1 text-indigo-600 font-semibold">
+                <span>👆</span>
+                <span>{hoveredCell.ad.clickCount}</span>
+              </div>
+              <div className="flex items-center gap-1 text-purple-600 font-semibold">
+                <span>👁</span>
+                <span>{hoveredCell.ad.viewCount}</span>
+              </div>
             </div>
-            <p className="text-xs text-gray-400 mt-1 font-mono">
-              ({hoveredCell.x}, {hoveredCell.y})
-            </p>
+            <div className="pt-2 border-t border-gray-200">
+              <p className="text-xs text-gray-500 font-mono">
+                ({hoveredCell.x}, {hoveredCell.y})
+              </p>
+            </div>
           </div>
         )}
         {isLoading && (
-          <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white px-3 py-1 rounded text-sm">
-            読み込み中...
+          <div className="absolute top-3 right-3 glass px-4 py-2 rounded-lg text-sm font-medium shadow-lg animate-pulse border border-white/50">
+            <span className="text-gray-700 font-semibold">⏳ 読み込み中...</span>
           </div>
         )}
       </div>
 
       {selectedCell && (
-        <div className="mt-4 p-4 bg-white border-2 border-gray-300 rounded-lg max-w-md">
-          <h3 className="font-bold text-lg mb-2">
-            セル ({selectedCell.x}, {selectedCell.y})
-          </h3>
+        <div className="mt-6 p-5 glass border border-white/50 rounded-xl shadow-xl max-w-md animate-slide-up">
+          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200">
+            <span className="text-xl">📍</span>
+            <h3 className="font-bold text-lg text-gray-800">
+              セル <span className="text-indigo-600 font-mono">({selectedCell.x}, {selectedCell.y})</span>
+            </h3>
+          </div>
           {selectedCellData?.ad ? (
-            <div>
-              <div className="flex items-center gap-2 mb-2">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 mb-3">
                 <div
-                  className="w-6 h-6 rounded border border-gray-300"
+                  className="w-8 h-8 rounded-lg border-2 border-white shadow-md"
                   style={{ backgroundColor: selectedCellData.ad.color }}
                 />
-                <p className="font-semibold">{selectedCellData.ad.title}</p>
+                <p className="font-bold text-gray-800 text-lg">{selectedCellData.ad.title}</p>
               </div>
               {selectedCellData.ad.message && (
-                <p className="text-gray-600 mt-1">{selectedCellData.ad.message}</p>
+                <p className="text-gray-600 text-sm leading-relaxed bg-gray-50 p-3 rounded-lg">
+                  {selectedCellData.ad.message}
+                </p>
               )}
-              <p className="text-sm text-gray-500 mt-2">
-                クリック数: {selectedCellData.ad.clickCount} | 閲覧数:{' '}
-                {selectedCellData.ad.viewCount}
-              </p>
-              <p className="text-xs text-gray-400 mt-1 font-mono">
-                色: {selectedCellData.ad.color}
-              </p>
-              <a
-                href={selectedCellData.ad.targetUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-500 hover:underline mt-2 inline-block"
-              >
-                広告を見る →
-              </a>
+              <div className="flex gap-4 text-sm pt-2">
+                <div className="flex items-center gap-2 text-indigo-600 font-semibold">
+                  <span>👆</span>
+                  <span>{selectedCellData.ad.clickCount}</span>
+                </div>
+                <div className="flex items-center gap-2 text-purple-600 font-semibold">
+                  <span>👁</span>
+                  <span>{selectedCellData.ad.viewCount}</span>
+                </div>
+              </div>
+              <div className="pt-3 border-t border-gray-200">
+                <p className="text-xs text-gray-500 font-mono mb-3">
+                  色: {selectedCellData.ad.color}
+                </p>
+                <a
+                  href={selectedCellData.ad.targetUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105"
+                >
+                  <span>🚀</span>
+                  <span>広告を見る</span>
+                  <span>→</span>
+                </a>
+              </div>
             </div>
           ) : (
-            <p className="text-gray-500">このマスは空いています</p>
+            <div className="text-center py-4">
+              <p className="text-gray-500 text-lg mb-2">このマスは空いています</p>
+              <p className="text-gray-400 text-sm">右クリックで広告を配置できます</p>
+            </div>
           )}
         </div>
       )}
