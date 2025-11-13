@@ -52,10 +52,9 @@ export async function placeAdOnCell(
   y: number,
   userId: string,
   adData: {
-    title: string;
+    title?: string;
     message?: string;
-    imageUrl?: string;
-    targetUrl: string;
+    targetUrl?: string;
     color?: string;
   },
 ) {
@@ -72,10 +71,9 @@ export async function placeAdOnCell(
   await db.insert(advertisementsTable).values({
     adId,
     userId,
-    title: adData.title,
+    title: adData.title ?? null,
     message: adData.message ?? null,
-    imageUrl: adData.imageUrl ?? null,
-    targetUrl: adData.targetUrl,
+    targetUrl: adData.targetUrl ?? null,
     color: adData.color ?? '#3b82f6', // デフォルトは青
     clickCount: 0,
     viewCount: 0,
@@ -108,10 +106,9 @@ export async function placeAdOnCell(
 export async function updateAd(
   adId: string,
   adData: {
-    title: string;
+    title?: string;
     message?: string;
-    imageUrl?: string;
-    targetUrl: string;
+    targetUrl?: string;
     color?: string;
   },
 ) {
@@ -128,10 +125,9 @@ export async function updateAd(
   await db
     .update(advertisementsTable)
     .set({
-      title: adData.title,
+      title: adData.title ?? null,
       message: adData.message ?? null,
-      imageUrl: adData.imageUrl ?? null,
-      targetUrl: adData.targetUrl,
+      targetUrl: adData.targetUrl ?? null,
       color: adData.color ?? '#3b82f6',
       updatedAt: new Date(),
     })

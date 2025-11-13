@@ -17,10 +17,9 @@ export const usersTable = sqliteTable('users', {
 export const advertisementsTable = sqliteTable('advertisements', {
   adId: text('adId').primaryKey(),
   userId: text('userId').notNull(),
-  title: text('title').notNull(),
+  title: text('title'),
   message: text('message'),
-  imageUrl: text('imageUrl'),
-  targetUrl: text('targetUrl').notNull(),
+  targetUrl: text('targetUrl'),
   color: text('color').notNull().default('#3b82f6'), // 広告の色（HEX形式）
   clickCount: integer('clickCount').notNull().default(0),
   viewCount: integer('viewCount').notNull().default(0),

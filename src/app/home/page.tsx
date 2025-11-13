@@ -11,7 +11,6 @@ export default function Home() {
     userId: '',
     title: '',
     message: '',
-    imageUrl: '',
     targetUrl: '',
     color: '#3b82f6', // デフォルトは青
   });
@@ -21,21 +20,19 @@ export default function Home() {
   // 右クリックでフォームを開く
   const handleGridRightClick = (x: number, y: number, ad: {
     adId: string;
-    title: string;
+    title: string | null;
     message: string | null;
-    imageUrl: string | null;
-    targetUrl: string;
+    targetUrl: string | null;
     color: string;
-  } | null) => {
+  } | null, userId: string | null) => {
     if (ad) {
       // 既存の広告を編集
       setFormData({
         x: x.toString(),
         y: y.toString(),
-        userId: '', // 編集時はユーザーIDは変更しない
+        userId: userId ?? '', // 既存の広告のユーザーIDを設定
         title: ad.title ?? '',
         message: ad.message ?? '',
-        imageUrl: ad.imageUrl ?? '',
         targetUrl: ad.targetUrl ?? '',
         color: ad.color ?? '#3b82f6',
       });
@@ -48,7 +45,6 @@ export default function Home() {
         userId: '',
         title: '',
         message: '',
-        imageUrl: '',
         targetUrl: '',
         color: '#3b82f6',
       });
@@ -70,10 +66,9 @@ export default function Home() {
           body: JSON.stringify({
             adId: editingAdId,
             adData: {
-              title: formData.title,
+              title: formData.title || undefined,
               message: formData.message || undefined,
-              imageUrl: formData.imageUrl || undefined,
-              targetUrl: formData.targetUrl,
+              targetUrl: formData.targetUrl || undefined,
               color: formData.color,
             },
           }),
@@ -98,7 +93,6 @@ export default function Home() {
             userId: '',
             title: '',
             message: '',
-            imageUrl: '',
             targetUrl: '',
             color: '#3b82f6',
           });
@@ -117,10 +111,9 @@ export default function Home() {
             y: parseInt(formData.y),
             userId: formData.userId || `user_${Date.now()}`,
             adData: {
-              title: formData.title,
+              title: formData.title || undefined,
               message: formData.message || undefined,
-              imageUrl: formData.imageUrl || undefined,
-              targetUrl: formData.targetUrl,
+              targetUrl: formData.targetUrl || undefined,
               color: formData.color,
             },
           }),
@@ -144,7 +137,6 @@ export default function Home() {
             userId: '',
             title: '',
             message: '',
-            imageUrl: '',
             targetUrl: '',
             color: '#3b82f6',
           });
@@ -267,7 +259,8 @@ export default function Home() {
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  ユーザーID <span className="text-gray-400 font-normal text-xs">（空欄可、自動生成されます）</span>
+                  ユーザーID {editingAdId && <span className="text-gray-400 font-normal text-xs">（既存の広告）</span>}
+                  {!editingAdId && <span className="text-gray-400 font-normal text-xs">（空欄可、自動生成されます）</span>}
                 </label>
                 <input
                   type="text"
@@ -275,19 +268,25 @@ export default function Home() {
                   onChange={(e) => setFormData({ ...formData, userId: e.target.value })}
                   className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-300 bg-white transition-all"
                   placeholder="user_123"
+                  readOnly={!!editingAdId}
+                  disabled={!!editingAdId}
                 />
+                {editingAdId && formData.userId && (
+                  <p className="text-xs text-gray-500 mt-1 ml-1">
+                    この広告を配置したユーザーID: <span className="font-mono font-semibold">{formData.userId}</span>
+                  </p>
+                )}
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  タイトル <span className="text-red-500">*</span>
+                  タイトル
                 </label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-300 bg-white transition-all"
-                  required
                 />
               </div>
 
@@ -305,20 +304,7 @@ export default function Home() {
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  画像URL
-                </label>
-                <input
-                  type="url"
-                  value={formData.imageUrl}
-                  onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-300 bg-white transition-all"
-                  placeholder="https://example.com/image.png"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  リンク先URL <span className="text-red-500">*</span>
+                  リンク先URL
                 </label>
                 <input
                   type="url"
@@ -326,7 +312,6 @@ export default function Home() {
                   onChange={(e) => setFormData({ ...formData, targetUrl: e.target.value })}
                   className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-300 bg-white transition-all"
                   placeholder="https://example.com"
-                  required
                 />
               </div>
 

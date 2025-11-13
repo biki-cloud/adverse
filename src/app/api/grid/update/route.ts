@@ -13,10 +13,9 @@ export async function PUT(request: NextRequest) {
     const { adId, adData } = body as {
       adId?: string;
       adData?: {
-        title: string;
+        title?: string;
         message?: string;
-        imageUrl?: string;
-        targetUrl: string;
+        targetUrl?: string;
         color?: string;
       };
     };
