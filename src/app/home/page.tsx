@@ -1,14 +1,55 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Grid from '@/app/components/Grid';
 
+// ローカルストレージからuserIdを取得、なければ生成して保存
+function getOrCreateUserId(): string {
+  if (typeof window === 'undefined') {
+    // SSR時は一時的なIDを返す（実際には使われない）
+    return `user_temp_${Date.now()}`;
+  }
+
+  const storageKey = 'adverse_user_id';
+  let userId = localStorage.getItem(storageKey);
+
+  if (!userId) {
+    // 一意のIDを生成（ランダム文字列 + タイムスタンプ）
+    userId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    localStorage.setItem(storageKey, userId);
+  }
+
+  return userId;
+}
+
+// ローカルストレージからnameを取得
+function getUserName(): string {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+  return localStorage.getItem('adverse_user_name') ?? '';
+}
+
+// ローカルストレージにnameを保存
+function saveUserName(name: string): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  if (name.trim()) {
+    localStorage.setItem('adverse_user_name', name.trim());
+  } else {
+    localStorage.removeItem('adverse_user_name');
+  }
+}
+
 export default function Home() {
+  const [userId, setUserId] = useState<string>('');
+  const [userName, setUserName] = useState<string>('');
   const [showPlaceForm, setShowPlaceForm] = useState(false);
   const [formData, setFormData] = useState({
     x: '',
     y: '',
-    userId: '',
+    name: '',
     title: '',
     message: '',
     targetUrl: '',
@@ -17,20 +58,34 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingAdId, setEditingAdId] = useState<string | null>(null); // 編集中の広告ID
 
+  // コンポーネントマウント時にuserIdとnameを取得
+  useEffect(() => {
+    setUserId(getOrCreateUserId());
+    setUserName(getUserName());
+    // フォームのnameフィールドにも初期値を設定
+    setFormData((prev) => ({ ...prev, name: getUserName() }));
+  }, []);
+
   // 右クリックでフォームを開く
-  const handleGridRightClick = (x: number, y: number, ad: {
-    adId: string;
-    title: string | null;
-    message: string | null;
-    targetUrl: string | null;
-    color: string;
-  } | null, userId: string | null) => {
+  const handleGridRightClick = (
+    x: number,
+    y: number,
+    ad: {
+      adId: string;
+      name: string | null;
+      title: string | null;
+      message: string | null;
+      targetUrl: string | null;
+      color: string;
+    } | null,
+    _adUserId: string | null
+  ) => {
     if (ad) {
-      // 既存の広告を編集
+      // 既存の広告を編集（自分の広告のみ編集可能）
       setFormData({
         x: x.toString(),
         y: y.toString(),
-        userId: userId ?? '', // 既存の広告のユーザーIDを設定
+        name: ad.name ?? userName, // 既存の広告のname、なければ現在のuserName
         title: ad.title ?? '',
         message: ad.message ?? '',
         targetUrl: ad.targetUrl ?? '',
@@ -42,7 +97,7 @@ export default function Home() {
       setFormData({
         x: x.toString(),
         y: y.toString(),
-        userId: '',
+        name: userName, // 保存されているnameを使用
         title: '',
         message: '',
         targetUrl: '',
@@ -58,6 +113,15 @@ export default function Home() {
     setIsSubmitting(true);
 
     try {
+      if (!userId) {
+        alert('エラー: ユーザーIDが取得できませんでした');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // nameをローカルストレージに保存
+      saveUserName(formData.name);
+
       if (editingAdId) {
         // 既存の広告を更新
         const response = await fetch('/api/grid/update', {
@@ -65,7 +129,9 @@ export default function Home() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             adId: editingAdId,
+            userId: userId,
             adData: {
+              name: formData.name || undefined,
               title: formData.title || undefined,
               message: formData.message || undefined,
               targetUrl: formData.targetUrl || undefined,
@@ -90,7 +156,7 @@ export default function Home() {
           setFormData({
             x: '',
             y: '',
-            userId: '',
+            name: userName,
             title: '',
             message: '',
             targetUrl: '',
@@ -109,8 +175,9 @@ export default function Home() {
           body: JSON.stringify({
             x: parseInt(formData.x),
             y: parseInt(formData.y),
-            userId: formData.userId || `user_${Date.now()}`,
+            userId: userId,
             adData: {
+              name: formData.name || undefined,
               title: formData.title || undefined,
               message: formData.message || undefined,
               targetUrl: formData.targetUrl || undefined,
@@ -134,7 +201,7 @@ export default function Home() {
           setFormData({
             x: '',
             y: '',
-            userId: '',
+            name: userName,
             title: '',
             message: '',
             targetUrl: '',
@@ -155,45 +222,44 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
+    <div className="relative min-h-screen overflow-hidden">
       {/* 背景装飾 */}
       <div className="fixed inset-0 -z-10">
         <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100"></div>
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-yellow-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-        <div className="absolute -bottom-8 left-1/3 w-96 h-96 bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+        <div className="animate-blob absolute left-1/4 top-0 h-96 w-96 rounded-full bg-purple-300 opacity-20 mix-blend-multiply blur-3xl filter"></div>
+        <div className="animate-blob animation-delay-2000 absolute right-1/4 top-0 h-96 w-96 rounded-full bg-yellow-300 opacity-20 mix-blend-multiply blur-3xl filter"></div>
+        <div className="animate-blob animation-delay-4000 absolute -bottom-8 left-1/3 h-96 w-96 rounded-full bg-pink-300 opacity-20 mix-blend-multiply blur-3xl filter"></div>
       </div>
 
-      <div className="container mx-auto py-8 px-4">
-        <div className="text-center mb-10 animate-slide-up">
-          <div className="inline-block mb-4">
-            <h1 className="text-6xl md:text-7xl font-extrabold mb-4 text-gradient">
-              🌍 AdVerse
-            </h1>
+      <div className="container mx-auto px-4 py-8">
+        <div className="animate-slide-up mb-10 text-center">
+          <div className="mb-4 inline-block">
+            <h1 className="text-gradient mb-4 text-6xl font-extrabold md:text-7xl">🌍 AdVerse</h1>
           </div>
-          <p className="text-xl md:text-2xl text-gray-800 mb-3 font-medium">
+          <p className="mb-3 text-xl font-medium text-gray-800 md:text-2xl">
             世界中のユーザーが1マスずつ埋めていく、参加型の広告宇宙
           </p>
-          <p className="text-lg text-gray-600 mb-6">
+          <p className="mb-6 text-lg text-gray-600">
             1000×1000マスの巨大グリッドで、あなたの広告を配置しよう
           </p>
-          <div className="inline-flex items-center gap-2 px-4 py-2 glass rounded-full shadow-lg">
+          <div className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 shadow-lg">
             <span className="text-lg">💡</span>
             <p className="text-sm font-medium text-gray-700">
-              グリッド上で<strong className="text-indigo-600">右クリック</strong>して広告を配置できます
+              グリッド上で<strong className="text-indigo-600">右クリック</strong>
+              して広告を配置できます
             </p>
           </div>
         </div>
 
         {/* 右側にスライドインするフォームパネル */}
         <div
-          className={`fixed top-0 right-0 h-full w-full md:w-96 glass shadow-2xl transform transition-all duration-300 ease-in-out z-50 overflow-y-auto ${
+          className={`glass fixed right-0 top-0 z-50 h-full w-full transform overflow-y-auto shadow-2xl transition-all duration-300 ease-in-out md:w-96 ${
             showPlaceForm ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
           }`}
         >
           {showPlaceForm && (
-            <div className="p-6 animate-slide-in-right">
-              <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-200">
+            <div className="animate-slide-in-right p-6">
+              <div className="mb-6 flex items-center justify-between border-b border-gray-200 pb-4">
                 <h2 className="text-2xl font-bold text-gray-800">
                   {editingAdId ? '✏️ 広告を編集' : '✨ 広告を配置'}
                 </h2>
@@ -202,7 +268,7 @@ export default function Home() {
                     setShowPlaceForm(false);
                     setEditingAdId(null);
                   }}
-                  className="text-gray-400 hover:text-gray-600 text-3xl font-light transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-3xl font-light text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
                   type="button"
                   aria-label="閉じる"
                 >
@@ -210,162 +276,155 @@ export default function Home() {
                 </button>
               </div>
               <form onSubmit={handlePlaceAd} className="space-y-5">
-              <div className="mb-4 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-100 shadow-sm">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xl">📍</span>
-                  <p className="text-sm font-semibold text-indigo-900">
-                    配置位置: ({formData.x || '?'}, {formData.y || '?'})
+                <div className="mb-4 rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-purple-50 p-4 shadow-sm">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="text-xl">📍</span>
+                    <p className="text-sm font-semibold text-indigo-900">
+                      配置位置: ({formData.x || '?'}, {formData.y || '?'})
+                    </p>
+                  </div>
+                  <p className="ml-7 text-xs text-indigo-700">
+                    {editingAdId
+                      ? '編集モード: 位置は変更できません'
+                      : 'グリッド上で右クリックした位置に自動設定されます'}
                   </p>
                 </div>
-                <p className="text-xs text-indigo-700 ml-7">
-                  {editingAdId
-                    ? '編集モード: 位置は変更できません'
-                    : 'グリッド上で右クリックした位置に自動設定されます'}
-                </p>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={`block text-sm font-semibold mb-2 ${editingAdId ? 'text-gray-400' : 'text-gray-700'}`}>
-                    X座標
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="999"
-                    value={formData.x}
-                    onChange={(e) => setFormData({ ...formData, x: e.target.value })}
-                    className={`w-full px-4 py-2.5 border-2 rounded-lg transition-all ${
-                      editingAdId
-                        ? 'border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed'
-                        : 'border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-300'
-                    }`}
-                    required
-                    readOnly={!!editingAdId}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      className={`mb-2 block text-sm font-semibold ${editingAdId ? 'text-gray-400' : 'text-gray-700'}`}
+                    >
+                      X座標
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="999"
+                      value={formData.x}
+                      onChange={(e) => setFormData({ ...formData, x: e.target.value })}
+                      className={`w-full rounded-lg border-2 px-4 py-2.5 transition-all ${
+                        editingAdId
+                          ? 'cursor-not-allowed border-gray-300 bg-gray-100 text-gray-500'
+                          : 'border-gray-200 bg-white focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500'
+                      }`}
+                      required
+                      readOnly={!!editingAdId}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      className={`mb-2 block text-sm font-semibold ${editingAdId ? 'text-gray-400' : 'text-gray-700'}`}
+                    >
+                      Y座標
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="999"
+                      value={formData.y}
+                      onChange={(e) => setFormData({ ...formData, y: e.target.value })}
+                      className={`w-full rounded-lg border-2 px-4 py-2.5 transition-all ${
+                        editingAdId
+                          ? 'cursor-not-allowed border-gray-300 bg-gray-100 text-gray-500'
+                          : 'border-gray-200 bg-white focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500'
+                      }`}
+                      required
+                      readOnly={!!editingAdId}
+                    />
+                  </div>
                 </div>
+
                 <div>
-                  <label className={`block text-sm font-semibold mb-2 ${editingAdId ? 'text-gray-400' : 'text-gray-700'}`}>
-                    Y座標
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                    作成者名 <span className="text-xs font-normal text-gray-400">（空欄可）</span>
                   </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="999"
-                    value={formData.y}
-                    onChange={(e) => setFormData({ ...formData, y: e.target.value })}
-                    className={`w-full px-4 py-2.5 border-2 rounded-lg transition-all ${
-                      editingAdId
-                        ? 'border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed'
-                        : 'border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-300'
-                    }`}
-                    required
-                    readOnly={!!editingAdId}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className={`block text-sm font-semibold mb-2 ${editingAdId ? 'text-gray-400' : 'text-gray-700'}`}>
-                  ユーザーID {editingAdId && <span className="text-gray-400 font-normal text-xs">（既存の広告）</span>}
-                  {!editingAdId && <span className="text-gray-400 font-normal text-xs">（空欄可、自動生成されます）</span>}
-                </label>
-                <input
-                  type="text"
-                  value={formData.userId}
-                  onChange={(e) => setFormData({ ...formData, userId: e.target.value })}
-                  className={`w-full px-4 py-2.5 border-2 rounded-lg transition-all ${
-                    editingAdId
-                      ? 'border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed'
-                      : 'border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-300'
-                  }`}
-                  placeholder="user_123"
-                  readOnly={!!editingAdId}
-                  disabled={!!editingAdId}
-                />
-                {editingAdId && formData.userId && (
-                  <p className="text-xs text-gray-500 mt-1 ml-1">
-                    この広告を配置したユーザーID: <span className="font-mono font-semibold">{formData.userId}</span>
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  タイトル
-                </label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-300 bg-white transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  メッセージ
-                </label>
-                <textarea
-                  value={formData.message}
-                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-300 bg-white transition-all resize-none"
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  リンク先URL
-                </label>
-                <input
-                  type="url"
-                  value={formData.targetUrl}
-                  onChange={(e) => setFormData({ ...formData, targetUrl: e.target.value })}
-                  className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-300 bg-white transition-all"
-                  placeholder="https://example.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  広告の色 <span className="text-red-500">*</span>
-                </label>
-                <div className="flex gap-3 items-center">
-                  <input
-                    type="color"
-                    value={formData.color}
-                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                    className="w-16 h-12 border-2 border-gray-200 rounded-lg cursor-pointer shadow-sm hover:shadow-md transition-shadow"
-                  />
                   <input
                     type="text"
-                    value={formData.color}
-                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                    className="flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-300 bg-white font-mono text-sm transition-all"
-                    placeholder="#3b82f6"
-                    pattern="^#[0-9A-Fa-f]{6}$"
-                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-2.5 transition-all focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="あなたの名前（任意）"
+                  />
+                  <p className="ml-1 mt-1 text-xs text-gray-500">
+                    広告に表示される作成者名です。入力した内容は次回以降も保存されます。
+                  </p>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">タイトル</label>
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    className="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-2.5 transition-all focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
-                <p className="text-xs text-gray-500 mt-2 ml-1">
-                  グリッド上でこの色で表示されます
-                </p>
-              </div>
 
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full px-6 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]"
-              >
-                {isSubmitting
-                  ? editingAdId
-                    ? '⏳ 更新中...'
-                    : '⏳ 配置中...'
-                  : editingAdId
-                    ? '✨ 広告を更新'
-                    : '🚀 広告を配置'}
-              </button>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                    メッセージ
+                  </label>
+                  <textarea
+                    value={formData.message}
+                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                    className="w-full resize-none rounded-lg border-2 border-gray-200 bg-white px-4 py-2.5 transition-all focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    rows={3}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                    リンク先URL
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.targetUrl}
+                    onChange={(e) => setFormData({ ...formData, targetUrl: e.target.value })}
+                    className="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-2.5 transition-all focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="https://example.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                    広告の色 <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={formData.color}
+                      onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                      className="h-12 w-16 cursor-pointer rounded-lg border-2 border-gray-200 shadow-sm transition-shadow hover:shadow-md"
+                    />
+                    <input
+                      type="text"
+                      value={formData.color}
+                      onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                      className="flex-1 rounded-lg border-2 border-gray-200 bg-white px-4 py-2.5 font-mono text-sm transition-all focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="#3b82f6"
+                      pattern="^#[0-9A-Fa-f]{6}$"
+                      required
+                    />
+                  </div>
+                  <p className="ml-1 mt-2 text-xs text-gray-500">
+                    グリッド上でこの色で表示されます
+                  </p>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full transform rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3.5 font-semibold text-white shadow-lg transition-all hover:scale-[1.02] hover:from-indigo-700 hover:to-purple-700 hover:shadow-xl active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isSubmitting
+                    ? editingAdId
+                      ? '⏳ 更新中...'
+                      : '⏳ 配置中...'
+                    : editingAdId
+                      ? '✨ 広告を更新'
+                      : '🚀 広告を配置'}
+                </button>
               </form>
             </div>
           )}
@@ -374,12 +433,12 @@ export default function Home() {
         {/* フォームが開いている時のオーバーレイ */}
         {showPlaceForm && (
           <div
-            className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm z-40 transition-opacity animate-fade-in"
+            className="animate-fade-in fixed inset-0 z-40 bg-black bg-opacity-40 backdrop-blur-sm transition-opacity"
             onClick={() => setShowPlaceForm(false)}
           />
         )}
 
-        <div className="glass rounded-2xl shadow-2xl p-6 border border-white/50 animate-slide-up">
+        <div className="glass animate-slide-up rounded-2xl border border-white/50 p-6 shadow-2xl">
           <Grid
             gridSize={1000}
             initialCellSize={20}
